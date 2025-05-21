@@ -7,6 +7,7 @@ from PyQt5.QtGui import QDrag, QColor
 from storyline.storyline_manager import StorylineManager
 from match_engine import load_wrestler_by_id
 from ui.theme import apply_styles
+import logging
 
 class StorylineItem(QFrame):
     """A draggable item representing a potential or active storyline."""
@@ -15,39 +16,86 @@ class StorylineItem(QFrame):
         self.storyline_data = storyline_data
         self.main_ui = main_ui
         self.setAcceptDrops(True)
-        self.initUI()
+        
+        try:
+            self.initUI()
+        except Exception as e:
+            # Create simple error UI if initUI fails
+            layout = QVBoxLayout(self)
+            error_label = QLabel(f"Error loading storyline: {str(e)}")
+            error_label.setStyleSheet("color: red;")
+            layout.addWidget(error_label)
+            
+            # Still make it look like a storyline item
+            self.setStyleSheet("""
+                QFrame {
+                    background-color: #232323;
+                    border: 1px solid #444;
+                    border-radius: 5px;
+                    margin: 2px;
+                    padding: 2px;
+                }
+            """)
+            logging.error(f"Error initializing storyline item: {e}")
 
     def initUI(self):
         layout = QVBoxLayout(self)
         layout.setContentsMargins(4, 4, 4, 4)
         layout.setSpacing(3)
         
-        # Get wrestler names
-        wrestler1 = load_wrestler_by_id(self.storyline_data['wrestler1_id'])
-        wrestler2 = load_wrestler_by_id(self.storyline_data['wrestler2_id'])
+        # Get wrestler names with error handling
+        wrestler1 = None
+        wrestler2 = None
+        
+        try:
+            wrestler1 = load_wrestler_by_id(self.storyline_data['wrestler1_id'])
+            wrestler2 = load_wrestler_by_id(self.storyline_data['wrestler2_id'])
+            
+            if not wrestler1 or not wrestler2:
+                raise ValueError("One or both wrestlers not found")
+        except Exception as e:
+            wrestler1 = {"name": f"Wrestler {self.storyline_data['wrestler1_id']}"}
+            wrestler2 = {"name": f"Wrestler {self.storyline_data['wrestler2_id']}"}
+            logging.error(f"Error loading wrestlers: {e}")
         
         # Storyline value (with decay)
-        storyline_manager = StorylineManager()
-        value = storyline_manager.get_storyline_value(self.storyline_data['wrestler1_id'], self.storyline_data['wrestler2_id'])
-        value_label = QLabel(f"Potential Value: {value:.1f}")
-        value_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 11pt;")
-        layout.addWidget(value_label)
+        try:
+            storyline_manager = StorylineManager()
+            value = storyline_manager.get_storyline_value(
+                self.storyline_data['wrestler1_id'], 
+                self.storyline_data['wrestler2_id']
+            )
+            value_label = QLabel(f"Potential Value: {value:.1f}")
+            value_label.setStyleSheet("color: #4CAF50; font-weight: bold; font-size: 11pt;")
+            layout.addWidget(value_label)
+        except Exception as e:
+            value_label = QLabel("Value calculation error")
+            value_label.setStyleSheet("color: #F44336; font-weight: bold; font-size: 11pt;")
+            layout.addWidget(value_label)
+            logging.error(f"Error calculating storyline value: {e}")
         
         # Tooltip: show all interaction attributes and buffs
-        interactions = storyline_manager.get_storyline_interactions(self.storyline_data['wrestler1_id'], self.storyline_data['wrestler2_id'])
-        tooltip_lines = []
-        for inter in interactions:
-            buffs = ", ".join(f"{k}: {v}" for k, v in inter['attributes'].items() if k != 'details')
-            tooltip_lines.append(f"{inter['interaction_date']} - {inter['interaction_type']} (Value: {inter['base_value']})\n  Buffs: {buffs}\n  Details: {inter['attributes'].get('details','')}")
-        tooltip = "\n\n".join(tooltip_lines) if tooltip_lines else "No interactions yet."
-        self.setToolTip(tooltip)
+        try:
+            interactions = storyline_manager.get_storyline_interactions(
+                self.storyline_data['wrestler1_id'], 
+                self.storyline_data['wrestler2_id']
+            )
+            tooltip_lines = []
+            for inter in interactions:
+                buffs = ", ".join(f"{k}: {v}" for k, v in inter['attributes'].items() if k != 'details')
+                tooltip_lines.append(f"{inter['interaction_date']} - {inter['interaction_type']} (Value: {inter['base_value']})\n  Buffs: {buffs}\n  Details: {inter['attributes'].get('details','')}")
+            tooltip = "\n\n".join(tooltip_lines) if tooltip_lines else "No interactions yet."
+            self.setToolTip(tooltip)
+        except Exception as e:
+            self.setToolTip(f"Error loading interactions: {e}")
+            logging.error(f"Error loading storyline interactions: {e}")
         
         # Create the main content
         if 'interaction_type' in self.storyline_data:  # Potential storyline
             title = f"{wrestler1['name']} vs {wrestler2['name']}"
             subtitle = f"Type: {self.storyline_data['interaction_type']}"
-            details = self.storyline_data['interaction_details']
-            date = self.storyline_data['interaction_date']
+            details = self.storyline_data.get('interaction_details', 'No details')
+            date = self.storyline_data.get('interaction_date', 'Unknown date')
             
             # Add potential rating indicator
             rating = self.storyline_data.get('potential_rating', 0)
@@ -59,9 +107,9 @@ class StorylineItem(QFrame):
             layout.addWidget(rating_label)
         else:  # Active storyline
             title = f"{wrestler1['name']} vs {wrestler2['name']}"
-            subtitle = f"Type: {self.storyline_data['storyline_type']}"
-            details = f"Priority: {self.storyline_data['priority']}"
-            date = self.storyline_data['start_date']
+            subtitle = f"Type: {self.storyline_data.get('storyline_type', 'Unknown')}"
+            details = f"Priority: {self.storyline_data.get('priority', 0)}"
+            date = self.storyline_data.get('start_date', 'Unknown date')
         
         # Add content to layout
         title_label = QLabel(title)
@@ -248,20 +296,39 @@ class StorylineManagementUI(QWidget):
         self.refresh_storylines()
 
     def refresh_storylines(self):
-        """Refresh both potential and active storylines."""
-        # Clear existing items
-        self.potential_container.clear_items()
-        self.active_container.clear_items()
-        
-        # Load potential storylines
-        potential_storylines = self.storyline_manager.get_potential_storylines()
-        for storyline in potential_storylines:
-            self.potential_container.add_item(storyline)
-        
-        # Load active storylines
-        active_storylines = self.storyline_manager.get_active_storylines()
-        for storyline in active_storylines:
-            self.active_container.add_item(storyline)
+        """Refresh both potential and active storylines with better error handling and performance."""
+        try:
+            # Clear existing items
+            self.potential_container.clear_items()
+            self.active_container.clear_items()
+            
+            # Load potential storylines
+            try:
+                potential_storylines = self.storyline_manager.get_potential_storylines()
+                for storyline in potential_storylines:
+                    self.potential_container.add_item(storyline)
+            except Exception as e:
+                logging.error(f"Error loading potential storylines: {str(e)}")
+                error_label = QLabel(f"Error loading potential storylines: {str(e)}")
+                error_label.setStyleSheet("color: red;")
+                self.potential_container.items_layout.addWidget(error_label)
+            
+            # Load active storylines
+            try:
+                active_storylines = self.storyline_manager.get_active_storylines()
+                for storyline in active_storylines:
+                    self.active_container.add_item(storyline)
+            except Exception as e:
+                logging.error(f"Error loading active storylines: {str(e)}")
+                error_label = QLabel(f"Error loading active storylines: {str(e)}")
+                error_label.setStyleSheet("color: red;")
+                self.active_container.items_layout.addWidget(error_label)
+                
+        except Exception as e:
+            logging.error(f"Error in refresh_storylines: {str(e)}")
+            error_label = QLabel(f"General error refreshing storylines: {str(e)}")
+            error_label.setStyleSheet("color: red; font-weight: bold;")
+            self.potential_container.items_layout.addWidget(error_label)
 
     def delete_storyline(self, storyline_id: int):
         """Delete a potential storyline."""

@@ -4,6 +4,10 @@ from match_engine_utils import get_execution_commentary, extract_wrestler_stats
 from match_engine_utils import calculate_final_quality
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtCore import QThread
+import json
+import time
+import logging
+import game_state_debug
 
 import random
 import time
@@ -19,13 +23,22 @@ from db.utils import db_path
 from ui.stats_utils import calculate_high_level_stats_with_grades
 
 
+def prepare_wrestler(wrestler):
+    """Prepare a wrestler for a match by adding match-specific attributes."""
+    prepared = wrestler.copy()
+    prepared["stamina"] = 100
+    prepared["damage_taken"] = 0
+    prepared["momentum"] = False
+    return prepared
+
+
 def get_all_wrestlers():
     conn = sqlite3.connect(db_path("wrestlers.db"))
     cursor = conn.cursor()
     cursor.execute("SELECT id, name FROM wrestlers ORDER BY name")
     wrestlers = cursor.fetchall()
     conn.close()
-    return wrestlers  
+    return wrestlers
 
 
 def load_wrestler_by_id(wrestler_id):
@@ -106,11 +119,50 @@ def maybe_inject_colour_commentary(turn, attacking, defending, colour_callback):
 # --------------------------
 def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=None, colour_callback=None, stats_callback=None, fast_mode=False):
     """Simulate a wrestling match between two wrestlers."""
-    log_function("🎮 MATCH START 🎮")
-    QThread.msleep(1000)
+    start_time = time.time()
+    logging.info(f"Starting match simulation: {wrestler1['name']} vs {wrestler2['name']}")
     
-    log_function(f"{wrestler1['name']} vs. {wrestler2['name']}")
-    QThread.msleep(1000)
+    # Set up match state
+    w1, w2 = prepare_wrestler(wrestler1), prepare_wrestler(wrestler2)
+    attacker, defender = w1, w2
+    attacking, defending = attacker, defender
+    winner, win_type = None, None
+    
+    # Setup tracking variables
+    match_quality_score = 0
+    turn = 0
+    successful_moves = 0
+    had_highlight = False
+    drama_score = 0
+    sig_moves_landed = 0
+    flow_streak = 0
+    types_used = set()  # track variety
+    execution_buckets = {
+        "botched": 0,
+        "poor": 0,
+        "okay": 0,
+        "good": 0,
+        "great": 0,
+        "fantastic": 0,
+        "perfect": 0
+    }
+    move_log = []
+    success_by_wrestler = {w1["name"]: 0, w2["name"]: 0}
+    moves_by_phase = {
+        "early": [],
+        "mid": [],
+        "late": [],
+        "all": []
+    }
+    
+    logging.debug(f"Initial wrestler stats - {w1['name']}: STR={w1.get('strength', 'N/A')}, DEX={w1.get('dexterity', 'N/A')}, END={w1.get('endurance', 'N/A')}")
+    logging.debug(f"Initial wrestler stats - {w2['name']}: STR={w2.get('strength', 'N/A')}, DEX={w2.get('dexterity', 'N/A')}, END={w2.get('endurance', 'N/A')}")
+    
+    if update_callback:
+        update_callback(w1, w2)
+
+    log_function(f"The bell rings as {w1['name']} and {w2['name']} lock up in the center of the ring!")
+    log_function(f"Both wrestlers looking to establish dominance early.")
 
     attacking, defending = stalemate_check(wrestler1, wrestler2)
 
@@ -120,7 +172,6 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
         wrestler["momentum"] = False
     
     crowd_energy = 50 + ((wrestler1.get("entrance_presence", 10) + wrestler2.get("entrance_presence", 10)) // 5)
-    match_quality_score = 0
     execution_buckets = {
         "botched": 0,
         "okay": 0,
@@ -172,6 +223,10 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
             else:
                 update_callback(def_, att)
 
+    # Animation delay settings
+    move_delay = 0 if fast_mode else 500  # milliseconds
+    ui_update_enabled = not fast_mode
+
     while True:
         use_signature = (
             "signature_moves" in attacking and
@@ -184,14 +239,15 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
         # Handle color commentary with consistent timing
         maybe_inject_colour_commentary(turn, attacking, defending, colour_callback)
         
-        if not fast_mode:
+        if ui_update_enabled:
             QApplication.processEvents()
 
         if use_signature:
             sig = random.choice(attacking["signature_moves"])
             name, move_type, damage, difficulty = sig["name"], sig["type"], sig["damage"], sig["difficulty"]
             log_function(f"✨ {attacking['name']} goes for their signature move: {name}!")
-            QThread.msleep(500)
+            if move_delay > 0:
+                QThread.msleep(move_delay)
         else:
             name, move_type, damage, difficulty = select_progressive_manoeuvre(turn)
 
@@ -234,12 +290,14 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
 
         if success:
             log_function(f"{attacking['name']} successfully uses {name}!")
-            QThread.msleep(500)
+            if move_delay > 0:
+                QThread.msleep(move_delay)
 
             if is_signature:
                 attacking["momentum"] = True
                 log_function(f"✅ {attacking['name']} lands their signature!")
-                QThread.msleep(500)
+                if move_delay > 0:
+                    QThread.msleep(move_delay)
 
             # count successful moves
             successful_moves += 1
@@ -351,7 +409,8 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
                     "turns": turn
                 })
 
-            QApplication.processEvents()
+            if ui_update_enabled:
+                QApplication.processEvents()
         else:
             # Reversal check
             reversal_chance = max(0.1, 0.5 - (turn * 0.015))
@@ -394,96 +453,141 @@ def simulate_match(wrestler1, wrestler2, log_function=print, update_callback=Non
                         "turns": turn
                     })
 
-                QApplication.processEvents()
+                if ui_update_enabled:
+                    QApplication.processEvents()
 
-                continue
-            else:
-                log_function(f"{attacking['name']}'s {name} misses!")
-                # print(f"Missed move: {name} (attacker's {move_type} vs. difficulty {difficulty})")
+        # Pinfall attempt check
+        if defending["damage_taken"] >= 30 + turn // 3:
+            if "finisher" in attacking and attacking["stamina"] > 30 and random.random() < 0.3:
+                # Try finisher
+                fin_success, fin_winner, fin_type, was_escape = try_finisher(
+                    attacking, defending, turn, log_function, update_callback
+                )
 
-                missed_moves += 1
-                misses_by_wrestler[attacking["name"]] += 1
+                if fin_success:
+                    winner, finish_type = fin_winner["name"], fin_type
+                    log_function(f"🏆 {winner} wins by {finish_type}!")
+                    break
+                else:
+                    if was_escape:
+                        false_finish_count += 1
+                        drama_score += 3
+
+            elif turn > 40 and random.random() < 0.1:
+                # Exhaustion finish (late match)
+                if update_callback:
+                    update_ui(attacking, defending)
                 
-                # stamina drain
-                attacking["stamina"] = max(0, attacking["stamina"] - 2)
-                
-                attacking, defending = stalemate_check(attacking, defending)
-                update_ui(attacking, defending)
-                if stats_callback:
-                    stats_callback({
-                        "quality": match_quality_score,
-                        "reaction": get_crowd_reaction(match_quality_score),
-                        "hits": success_by_wrestler,
-                        "reversals": reversals_by_wrestler,
-                        "misses": misses_by_wrestler,
-                        "successes": success_by_wrestler,
-                        "flow_streak": flow_streak,
-                        "drama_score": drama_score,
-                        "false_finishes": false_finish_count,
-                        "sig_moves_landed": sig_moves_landed,
-                        "turns": turn
-                    })
-
-                QApplication.processEvents()
-                continue
-
-        success, winner, finish_type, switch_roles = try_finisher(attacking, defending, turn, log_function, update_callback)
-        if success:
-            break
-        elif switch_roles:
-            attacking, defending = defending, attacking
-            false_finish_count += 1
-            drama_score += 2
-
-
-    # Add a delay before showing the winner to ensure commentary is complete
-    if not fast_mode:
-        time.sleep(1.5)
+                log_function(f"{attacking['name']} goes for a pinfall with a small package!")
+                log_function(f"🏆 {attacking['name']} gets the pinfall victory!")
+                winner, finish_type = attacking["name"], "pinfall"
+                break
     
-    log_function("\n🏁 MATCH ENDS!")
-    log_function(f"🏆 WINNER: {winner['name']} by {finish_type}!")
-
-    flow_streak_at_end = flow_streak
+    # Final bookkeeping and stats
+    match_time = time.time() - start_time
+    logging.info(f"Match {wrestler1['name']} vs {wrestler2['name']} completed in {match_time:.2f}s")
+    logging.info(f"Winner: {winner} via {finish_type}")
+    
+    flow_streak_at_end = min(flow_streak, 3)  # Cap for purposes of final score
+    
+    w1_charisma = w1.get("charisma", 10)
+    w2_charisma = w2.get("charisma", 10)
+    winner_charisma = w1_charisma if winner == w1["name"] else w2_charisma
+    
     quality = calculate_final_quality(
         match_quality_score,
         types_used,
-        winner["charisma"],
+        winner_charisma,
         execution_buckets,
-        drama_score=drama_score,
-        crowd_energy=crowd_energy,
-        flow_streak_at_end=flow_streak_at_end,
-        had_highlight=had_highlight
+        drama_score,
+        crowd_energy,
+        flow_streak_at_end,
+        had_highlight
     )
-
-    log_function(f"⭐ Match Quality: {quality:.1f}/100")
-    log_function(f"🎤 Crowd Reaction: {get_crowd_reaction(quality)}")
-
+    
+    if quality >= 90:
+        log_function(f"🌟 What a match! The crowd is going wild! ({quality})")
+    elif quality >= 75:
+        log_function(f"👏 That was a great match! The crowd loved it. ({quality})")
+    elif quality >= 60:
+        log_function(f"👌 A solid match. The crowd is satisfied. ({quality})")
+    elif quality >= 45:
+        log_function(f"😐 A decent but unremarkable match. ({quality})")
+    else:
+        log_function(f"😴 That match didn't connect with the crowd. ({quality})")
+    
+    # Record match in database
+    try:
+        from db.utils import db_path
+        from datetime import datetime
+        
+        conn = sqlite3.connect(db_path("match_history.db"))
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            INSERT INTO matches (
+                wrestler1_id, wrestler2_id, winner_id, 
+                match_type, finish_type, match_quality, match_time
+            ) VALUES (
+                ?, ?, ?,
+                'singles', ?, ?, ?
+            )
+        """, (
+            w1.get("id", 0),
+            w2.get("id", 0),
+            w1.get("id", 0) if winner == w1["name"] else w2.get("id", 0),
+            finish_type,
+            quality,
+            int(match_time)
+        ))
+        
+        conn.commit()
+        conn.close()
+    except Exception as e:
+        logging.error(f"Failed to record match: {e}")
+        
+    # Update move experience for both wrestlers
+    for move_entry in move_log:
+        try:
+            if move_entry.get("wrestler_id"):
+                update_wrestler_move_experience(
+                    move_entry["wrestler_id"],
+                    move_entry["move_name"],
+                    move_entry["success"]
+                )
+        except Exception as e:
+            logging.error(f"Failed to update move experience: {e}")
+    
+    if stats_callback:
+        stats_callback({
+            "quality": quality,
+            "reaction": get_crowd_reaction(quality),
+            "hits": success_by_wrestler,
+            "reversals": reversals_by_wrestler,
+            "misses": misses_by_wrestler,
+            "successes": success_by_wrestler,
+            "flow_streak": flow_streak,
+            "drama_score": drama_score,
+            "false_finishes": false_finish_count,
+            "sig_moves_landed": sig_moves_landed,
+            "turns": turn
+        })
+    
+    # Return final result data
     return {
-        "winner": winner["name"],
-        "ending_move": winner["finisher"]["name"],
+        "winner": winner,
+        "win_type": finish_type,
         "quality": quality,
-        "reaction": get_crowd_reaction(quality),
-        "reversals": reversals_by_wrestler,
-        "successes": successful_moves,
-        "crowd_energy": crowd_energy,
-        "misses": misses_by_wrestler,
-        "damage_dealt": {
-            wrestler1["name"]: wrestler2["damage_taken"],
-            wrestler2["name"]: wrestler1["damage_taken"]
-        },
-        "stamina_drain": {
-            wrestler1["name"]: 100 - wrestler1["stamina"],
-            wrestler2["name"]: 100 - wrestler2["stamina"]
-        },
-        "hits": success_by_wrestler,
-        "misses_by_wrestler": misses_by_wrestler,
-        "reversals_by_wrestler": reversals_by_wrestler,
-        "execution_summary": execution_buckets,
         "drama_score": drama_score,
         "false_finishes": false_finish_count,
         "sig_moves_landed": sig_moves_landed,
         "turns": turn,
-        "moves": moves_by_phase,
-        "used_manoeuvres": move_log
-
+        "crowd_energy": crowd_energy,
+        "execution_summary": execution_buckets,
+        "stamina_drain": {
+            w1["name"]: 100 - w1["stamina"],
+            w2["name"]: 100 - w2["stamina"]
+        },
+        "match_time": match_time,
+        "reversals": reversals_by_wrestler
     }

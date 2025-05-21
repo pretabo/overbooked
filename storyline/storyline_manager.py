@@ -4,6 +4,7 @@ import sqlite3
 from datetime import datetime
 from game_state import get_game_date
 import os
+import logging
 
 class StorylineManager:
     def __init__(self):
@@ -12,70 +13,78 @@ class StorylineManager:
 
     def _init_db(self):
         """Initialize the database with required tables."""
-        # Ensure the data directory exists
-        os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
+        try:
+            # Ensure the data directory exists
+            os.makedirs(os.path.dirname(self.db_path), exist_ok=True)
             
-            # Potential storylines table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS potential_storylines (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    wrestler1_id INTEGER NOT NULL,
-                    wrestler2_id INTEGER NOT NULL,
-                    interaction_type TEXT NOT NULL,
-                    interaction_date TEXT NOT NULL,
-                    interaction_details TEXT,
-                    potential_rating INTEGER DEFAULT 0,
-                    created_at TEXT NOT NULL
-                )
-            """)
-            
-            # Active storylines table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS active_storylines (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    potential_storyline_id INTEGER,
-                    wrestler1_id INTEGER NOT NULL,
-                    wrestler2_id INTEGER NOT NULL,
-                    storyline_type TEXT NOT NULL,
-                    start_date TEXT NOT NULL,
-                    status TEXT DEFAULT 'active',
-                    priority INTEGER DEFAULT 0,
-                    last_progress_date TEXT,
-                    created_at TEXT NOT NULL,
-                    FOREIGN KEY (potential_storyline_id) REFERENCES potential_storylines(id)
-                )
-            """)
-            
-            # Storyline progress table
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS storyline_progress (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    storyline_id INTEGER NOT NULL,
-                    progress_type TEXT NOT NULL,
-                    progress_date TEXT NOT NULL,
-                    details TEXT,
-                    created_at TEXT NOT NULL,
-                    FOREIGN KEY (storyline_id) REFERENCES active_storylines(id)
-                )
-            """)
-            
-            # Storyline interactions table (new)
-            cursor.execute("""
-                CREATE TABLE IF NOT EXISTS storyline_interactions (
-                    id INTEGER PRIMARY KEY AUTOINCREMENT,
-                    storyline_pair TEXT NOT NULL, -- e.g. "id1-id2" sorted
-                    interaction_type TEXT NOT NULL,
-                    interaction_date TEXT NOT NULL,
-                    base_value INTEGER NOT NULL,
-                    decay_rate REAL DEFAULT 0.1, -- 10% per week
-                    attributes_json TEXT, -- JSON for flexible attributes
-                    created_at TEXT NOT NULL
-                )
-            """)
-            
-            conn.commit()
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                
+                # Potential storylines table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS potential_storylines (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        wrestler1_id INTEGER NOT NULL,
+                        wrestler2_id INTEGER NOT NULL,
+                        interaction_type TEXT NOT NULL,
+                        interaction_date TEXT NOT NULL,
+                        interaction_details TEXT,
+                        potential_rating INTEGER DEFAULT 0,
+                        created_at TEXT NOT NULL
+                    )
+                """)
+                
+                # Active storylines table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS active_storylines (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        potential_storyline_id INTEGER,
+                        wrestler1_id INTEGER NOT NULL,
+                        wrestler2_id INTEGER NOT NULL,
+                        storyline_type TEXT NOT NULL,
+                        start_date TEXT NOT NULL,
+                        status TEXT DEFAULT 'active',
+                        priority INTEGER DEFAULT 0,
+                        last_progress_date TEXT,
+                        created_at TEXT NOT NULL,
+                        FOREIGN KEY (potential_storyline_id) REFERENCES potential_storylines(id)
+                    )
+                """)
+                
+                # Storyline progress table
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS storyline_progress (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        storyline_id INTEGER NOT NULL,
+                        progress_type TEXT NOT NULL,
+                        progress_date TEXT NOT NULL,
+                        details TEXT,
+                        created_at TEXT NOT NULL,
+                        FOREIGN KEY (storyline_id) REFERENCES active_storylines(id)
+                    )
+                """)
+                
+                # Storyline interactions table (new)
+                cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS storyline_interactions (
+                        id INTEGER PRIMARY KEY AUTOINCREMENT,
+                        storyline_pair TEXT NOT NULL, -- e.g. "id1-id2" sorted
+                        interaction_type TEXT NOT NULL,
+                        interaction_date TEXT NOT NULL,
+                        base_value INTEGER NOT NULL,
+                        decay_rate REAL DEFAULT 0.1, -- 10% per week
+                        attributes_json TEXT, -- JSON for flexible attributes
+                        created_at TEXT NOT NULL
+                    )
+                """)
+                
+                conn.commit()
+                
+        except Exception as e:
+            logging.error(f"Error initializing storyline database: {e}")
+            # Create a fallback database in memory if file-based DB fails
+            self.db_path = ":memory:"
+            logging.warning("Using in-memory database as fallback.")
 
     def add_potential_storyline(self, wrestler1_id: int, wrestler2_id: int, 
                               interaction_type: str, interaction_details: str) -> int:
@@ -353,27 +362,49 @@ class StorylineManager:
     def get_storyline_value(self, wrestler1_id: int, wrestler2_id: int) -> float:
         """Calculate the current value of a storyline by summing decayed contributions."""
         pair = "-".join(str(i) for i in sorted([wrestler1_id, wrestler2_id]))
-        with sqlite3.connect(self.db_path) as conn:
-            cursor = conn.cursor()
-            cursor.execute("""
-                SELECT base_value, decay_rate, interaction_date
-                FROM storyline_interactions
-                WHERE storyline_pair = ?
-            """, (pair,))
-            total = 0.0
-            for base_value, decay_rate, interaction_date in cursor.fetchall():
-                # Calculate weeks since interaction
+        
+        try:
+            with sqlite3.connect(self.db_path) as conn:
+                cursor = conn.cursor()
+                cursor.execute("""
+                    SELECT base_value, decay_rate, interaction_date
+                    FROM storyline_interactions
+                    WHERE storyline_pair = ?
+                """, (pair,))
+                
+                total = 0.0
+                rows = cursor.fetchall()
+                if not rows:
+                    return 0.0
+                
+                # Get game date once, not in the loop
                 from datetime import datetime as dt
                 from game_state import get_game_date
-                game_now = dt.strptime(get_game_date(), "%A, %d %B %Y")
+                
                 try:
-                    interaction_dt = dt.strptime(interaction_date, "%A, %d %B %Y")
-                except Exception:
-                    interaction_dt = dt.fromisoformat(interaction_date)
-                weeks = max(0, (game_now - interaction_dt).days // 7)
-                value = base_value * ((1 - decay_rate) ** weeks)
-                total += value
-            return total
+                    game_now = dt.strptime(get_game_date(), "%A, %d %B %Y")
+                except Exception as e:
+                    logging.error(f"Error parsing game date: {e}")
+                    game_now = dt.now()  # Fallback
+                
+                for base_value, decay_rate, interaction_date in rows:
+                    # Calculate weeks since interaction
+                    try:
+                        try:
+                            interaction_dt = dt.strptime(interaction_date, "%A, %d %B %Y")
+                        except ValueError:
+                            interaction_dt = dt.fromisoformat(interaction_date)
+                        
+                        weeks = max(0, (game_now - interaction_dt).days // 7)
+                        value = base_value * ((1 - decay_rate) ** weeks)
+                        total += value
+                    except Exception as e:
+                        logging.error(f"Error calculating value for interaction: {e}")
+                
+                return total
+        except Exception as e:
+            logging.error(f"Error in get_storyline_value: {e}")
+            return 0.0
 
     def get_storyline_interactions(self, wrestler1_id: int, wrestler2_id: int) -> list:
         """Get all interactions for a storyline pair."""

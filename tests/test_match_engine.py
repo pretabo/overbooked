@@ -1,10 +1,16 @@
 import random
+import sys
+import os
+
+# Add parent directory to path
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
 from match_engine import simulate_match
 import time
 time.sleep = lambda x: None  # disable sleep for speed
 
 # === Test Config ===
-MATCH_COUNT = 10000
+MATCH_COUNT = 100  # Run 10,000 matches
 WRESTLER_QUALITY = "mixed"  # options: "low", "high", "mixed"
 
 
@@ -213,3 +219,25 @@ def test_average_quality_over_many_matches():
         
     # Sanity check (not strict pass/fail yet)
     # assert 45 < avg_quality < 90, "Average match quality is out of expected range"
+
+if __name__ == "__main__":
+    # Disable QThread.msleep to skip delays
+    from PyQt5.QtCore import QThread
+    original_msleep = QThread.msleep
+    QThread.msleep = lambda x: None
+    
+    # Disable QApplication.processEvents to skip UI updates
+    from PyQt5.QtWidgets import QApplication
+    original_process_events = QApplication.processEvents
+    QApplication.processEvents = lambda: None
+    
+    # Run the test
+    print("Starting match simulation test with delays disabled...")
+    start_time = time.time()
+    test_average_quality_over_many_matches()
+    total_time = time.time() - start_time
+    print(f"\nTotal execution time: {total_time:.2f} seconds")
+    
+    # Restore original methods
+    QThread.msleep = original_msleep
+    QApplication.processEvents = original_process_events

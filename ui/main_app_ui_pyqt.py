@@ -1,6 +1,6 @@
 from PyQt5.QtWidgets import (
     QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
-    QPushButton, QStackedWidget, QApplication
+    QPushButton, QStackedWidget, QApplication, QMessageBox
 )
 from PyQt5.QtCore import Qt
 
@@ -12,6 +12,8 @@ from ui.theme import apply_styles
 from PyQt5.QtGui import QIcon
 from datetime import datetime
 from diplomacy_system import DiplomacySystem
+import logging
+import game_state_debug
 
 
 # Import other screens here as needed
@@ -24,8 +26,9 @@ class MainApp(QMainWindow):
         self.pending_news_item = None
         self.diplomacy_system = DiplomacySystem()
 
+        logging.info("Initializing MainApp")
         self.diplomacy_system.load_from_db()
-        print("[Diplomacy] Loaded relationships from database.")
+        logging.info("[Diplomacy] Loaded relationships from database.")
 
 
         from game_state import load_game_state
@@ -98,6 +101,7 @@ class MainApp(QMainWindow):
 
 
         self.add_nav_button("[DEV] Diplomacy Manager", self.load_dev_diplomacy_ui)
+        self.add_nav_button("[DEBUG] Debug Menu", self.load_debug_menu_ui)
 
 
         self.left_panel.addStretch()  # Pushes everything above upward
@@ -118,6 +122,7 @@ class MainApp(QMainWindow):
         self.pending_news_item = None
 
         self.load_news_feed_ui()
+        logging.info("MainApp initialization complete")
 
     def add_nav_button(self, label, callback):
         btn = QPushButton(label)
@@ -138,12 +143,15 @@ class MainApp(QMainWindow):
         from game_state import get_game_date, is_event_locked, set_event_lock, advance_game_date
 
         if is_event_locked():
+            logging.warning("Date locked — event must be played first.")
             print("🚫 Date locked — event must be played first.")
             return
 
+        logging.info("Advancing game date...")
         print("🧭 Advancing game date...")
         advance_game_date()
         self.diplomacy_system.save_to_db()
+        logging.info("[Diplomacy] Autosaved relationships after date advance.")
         print("[Diplomacy] Autosaved relationships after date advance.")
 
         new_date = datetime.strptime(get_game_date(), "%A, %d %B %Y")
@@ -151,12 +159,15 @@ class MainApp(QMainWindow):
         self.date_label.setText(formatted)
 
         todays_date = datetime.strptime(get_game_date(), "%A, %d %B %Y").strftime("%Y-%m-%d")
+        logging.info(f"Checking for events on {todays_date}")
         print("📨 Checking for events on", todays_date)
 
         for ev in get_all_events():
             if ev[5] == todays_date:
+                logging.info(f"Event found: {ev}")
                 print("🔎 Event row:", ev)
                 event_id, name = ev[0], ev[1]
+                logging.info(f"Event FOUND on {todays_date}: {name}")
                 print("🎯 Event FOUND on", todays_date, ":", name)
                 set_event_lock(True)
 
@@ -288,11 +299,25 @@ class MainApp(QMainWindow):
         dev_screen = DevDiplomacyUI(diplomacy_system=self.diplomacy_system, on_back=self.load_news_feed_ui)
         self.right_panel.addWidget(dev_screen)
         self.right_panel.setCurrentWidget(dev_screen)
+
+    def load_debug_menu_ui(self):
+        """Load the debug menu UI for testing and diagnostics"""
+        from ui.debug_menu_ui import DebugMenuUI
+        self.clear_right_panel()
+        debug_menu = DebugMenuUI()
+        self.right_panel.addWidget(debug_menu)
+        self.right_panel.setCurrentWidget(debug_menu)
+        logging.info("Debug menu UI loaded")
+        
     def save_game_state_manually(self):
         from game_state import save_game_state
         self.diplomacy_system.save_to_db()
         save_game_state()
+        logging.info("Manual save completed")
+        game_state_debug.export_debug_state()  # Also export debug state
         print("[Save] Manual Save Complete!")
+        QMessageBox.information(self, "Save Complete", 
+                               "Game state saved successfully.\nDebug state also exported.")
 
     def load_promo_test_ui(self):
         self.clear_right_panel()
@@ -317,9 +342,31 @@ class MainApp(QMainWindow):
         return news_feed
 
     def load_storyline_management_ui(self):
-        """Load the storyline management UI."""
-        from ui.storyline_management_ui import StorylineManagementUI
-        self.clear_right_panel()
-        storyline_ui = StorylineManagementUI(on_back=self.load_news_feed_ui)
-        self.right_panel.addWidget(storyline_ui)
-        self.right_panel.setCurrentWidget(storyline_ui)
+        """Load the storyline management UI with proper error handling."""
+        try:
+            from ui.storyline_management_ui import StorylineManagementUI
+            import logging
+            
+            logging.info("Loading storyline management UI...")
+            self.clear_right_panel()
+            
+            # Create UI with error handling
+            try:
+                storyline_ui = StorylineManagementUI(on_back=self.load_news_feed_ui)
+                self.right_panel.addWidget(storyline_ui)
+                self.right_panel.setCurrentWidget(storyline_ui)
+                logging.info("Storyline management UI loaded successfully")
+            except Exception as e:
+                logging.error(f"Error creating storyline UI: {str(e)}")
+                from PyQt5.QtWidgets import QLabel
+                error_widget = QLabel(f"Error loading storyline management: {str(e)}")
+                error_widget.setStyleSheet("color: red; font-size: 14pt; padding: 20px;")
+                self.right_panel.addWidget(error_widget)
+                self.right_panel.setCurrentWidget(error_widget)
+                
+        except KeyboardInterrupt:
+            logging.warning("Storyline management UI load was interrupted")
+            self.load_news_feed_ui()  # Go back to news feed
+        except Exception as e:
+            logging.error(f"Unexpected error in storyline management: {str(e)}")
+            self.load_news_feed_ui()  # Go back to news feed
