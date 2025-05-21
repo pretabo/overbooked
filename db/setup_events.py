@@ -1,81 +1,85 @@
-# import sqlite3
-# from db.utils import db_path
+"""
+Setup the events database for Overbooked.
+"""
 
-# # Create or connect to manoeuvres.db
-# conn = sqlite3.connect(db_path("manoeuvres.db"))
-# cursor = conn.cursor()
+import sqlite3
+from db.utils import db_path
+import logging
 
-# # Create the table
-# cursor.execute("""
-# CREATE TABLE IF NOT EXISTS manoeuvres (
-#     id INTEGER PRIMARY KEY AUTOINCREMENT,
-#     name TEXT NOT NULL,
-#     type TEXT,
-#     damage INTEGER
-# )
-# """)
+def setup_events_db():
+    """
+    Set up the events database schema.
+    """
+    logging.info("Setting up events database...")
+    conn = sqlite3.connect(db_path("events.db"))
+    cursor = conn.cursor()
+    
+    # Create events table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            name TEXT NOT NULL,
+            card TEXT,
+            venue TEXT,
+            city TEXT,
+            event_date TEXT,
+            results TEXT,
+            created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        )
+    """)
+    
+    # Create events_matches table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events_matches (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id INTEGER,
+            match_number INTEGER,
+            wrestler1_id INTEGER,
+            wrestler2_id INTEGER,
+            match_type TEXT DEFAULT 'Singles',
+            stipulation TEXT DEFAULT 'Standard',
+            winner_id INTEGER,
+            quality INTEGER DEFAULT 0,
+            match_result TEXT,
+            FOREIGN KEY (event_id) REFERENCES events(id),
+            FOREIGN KEY (wrestler1_id) REFERENCES wrestlers(id),
+            FOREIGN KEY (wrestler2_id) REFERENCES wrestlers(id),
+            FOREIGN KEY (winner_id) REFERENCES wrestlers(id)
+        )
+    """)
+    
+    # Create events_promos table if it doesn't exist
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS events_promos (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            event_id INTEGER,
+            promo_number INTEGER,
+            wrestler_id INTEGER,
+            promo_text TEXT,
+            quality INTEGER DEFAULT 0,
+            crowd_reaction TEXT,
+            FOREIGN KEY (event_id) REFERENCES events(id),
+            FOREIGN KEY (wrestler_id) REFERENCES wrestlers(id)
+        )
+    """)
+    
+    # Add some sample data if the events table is empty
+    cursor.execute("SELECT COUNT(*) FROM events")
+    count = cursor.fetchone()[0]
+    
+    if count == 0:
+        # Add a sample event
+        cursor.execute("""
+            INSERT INTO events (name, venue, city, event_date)
+            VALUES (?, ?, ?, ?)
+        """, ("Overbooked: Premiere", "Madison Square Garden", "New York", "1997-01-31"))
+        
+        logging.info("Added sample event to events database")
+    
+    conn.commit()
+    conn.close()
+    logging.info("Events database setup complete")
 
-# manoeuvres = [
-#     # Strikes
-#     ("Dropkick", "strike", 6),
-#     ("Clothesline", "strike", 5),
-#     ("Superkick", "strike", 7),
-#     ("Forearm Smash", "strike", 5),
-#     ("Spinning Backfist", "strike", 6),
-#     ("Palm Strike", "strike", 4),
-#     ("Big Boot", "strike", 7),
-
-#     # Slams
-#     ("Powerbomb", "slam", 10),
-#     ("Body Slam", "slam", 6),
-#     ("Scoop Slam", "slam", 5),
-#     ("Piledriver", "slam", 9),
-#     ("Sidewalk Slam", "slam", 7),
-#     ("Spinebuster", "slam", 8),
-#     ("Jackknife Powerbomb", "slam", 10),
-
-#     # Grapples
-#     ("DDT", "grapple", 7),
-#     ("Suplex", "grapple", 8),
-#     ("Vertical Suplex", "grapple", 7),
-#     ("T-Bone Suplex", "grapple", 8),
-#     ("Northern Lights Suplex", "grapple", 7),
-#     ("Belly-to-Belly Suplex", "grapple", 7),
-#     ("Russian Leg Sweep", "grapple", 6),
-
-#     # Aerials
-#     ("Elbow Drop", "aerial", 4),
-#     ("Moonsault", "aerial", 8),
-#     ("Crossbody", "aerial", 6),
-#     ("450 Splash", "aerial", 9),
-#     ("Top Rope Leg Drop", "aerial", 7),
-#     ("Missile Dropkick", "aerial", 6),
-#     ("Shooting Star Press", "aerial", 10),
-
-#     # Submissions
-#     ("Boston Crab", "submission", 6),
-#     ("Sharpshooter", "submission", 8),
-#     ("Sleeper Hold", "submission", 5),
-#     ("Ankle Lock", "submission", 7),
-#     ("Triangle Choke", "submission", 7),
-#     ("Armbar", "submission", 6),
-#     ("Guillotine Choke", "submission", 8),
-
-#     # Finishers
-#     ("RKO", "finisher", 10),
-#     ("Stunner", "finisher", 10),
-#     ("Pedigree", "finisher", 10),
-#     ("Tombstone Piledriver", "finisher", 10),
-#     ("Spear", "finisher", 9),
-#     ("F5", "finisher", 10),
-#     ("Go To Sleep", "finisher", 9)
-# ]
-
-
-# # Insert into the table
-# cursor.executemany("INSERT INTO manoeuvres (name, type, damage) VALUES (?, ?, ?)", manoeuvres)
-
-# conn.commit()
-# conn.close()
-
-# print("Database and manoeuvres table created.")
+if __name__ == "__main__":
+    setup_events_db()
+    print("Events database setup complete.")

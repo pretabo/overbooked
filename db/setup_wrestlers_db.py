@@ -1,6 +1,6 @@
 import sqlite3
-from utils import db_path
-from wrestler_test_data import TEST_WRESTLERS, SIGNATURE_MOVES, FINISHERS
+from db.utils import db_path
+from db.wrestler_test_data import TEST_WRESTLERS, SIGNATURE_MOVES, FINISHERS
 
 # === Connect to wrestlers.db
 conn = sqlite3.connect(db_path("wrestlers.db"))

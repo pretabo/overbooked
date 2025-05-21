@@ -1,5 +1,5 @@
 import sqlite3
-from utils import db_path
+from db.utils import db_path
 
 def setup_events_db():
     conn = sqlite3.connect(db_path("events.db"))

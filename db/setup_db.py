@@ -1,6 +1,6 @@
 import os
 import subprocess
-from utils import db_path
+from db.utils import db_path
 
 print("🔧 Setting up all Overbooked databases...\n")
 
