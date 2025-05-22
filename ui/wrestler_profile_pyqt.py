@@ -240,31 +240,29 @@ Finisher:     {fin_name or 'N/A'} ({fin_style or '-'}) — {fin_dmg or '-'} dmg
             layout.addWidget(notice)
             return
 
-        wrestler_name = self.get_wrestler_name_by_id(self.wrestler_id)
-        if not wrestler_name:
-            notice = QLabel("Wrestler not found.")
-            notice.setStyleSheet("font-family: Fira Code; font-size: 14pt; color: #cccccc;")
-            layout.addWidget(notice)
-            return
-
         # Find relationships
         allies = []
         rivals = []
         enemies = []
 
-        for (name_a, name_b), score in self.diplomacy_system.relationships.items():
-            if wrestler_name in (name_a, name_b):
-                other = name_b if name_a == wrestler_name else name_a
-                if score >= 75:
-                    allies.append((other, score))
-                elif score >= 25:
-                    allies.append((other, score))
-                elif score >= -24:
-                    continue  # Neutral
-                elif score >= -74:
-                    rivals.append((other, score))
-                else:
-                    enemies.append((other, score))
+        # Get all relationships for this wrestler
+        relationships = self.diplomacy_system.get_all_relationships(self.wrestler_id)
+        
+        for other_id, score in relationships:
+            other_name = self.get_wrestler_name_by_id(other_id)
+            if not other_name:
+                continue  # Skip if wrestler not found
+                
+            if score >= 75:
+                allies.append((other_name, score))
+            elif score >= 25:
+                allies.append((other_name, score))
+            elif score >= -24:
+                continue  # Neutral
+            elif score >= -74:
+                rivals.append((other_name, score))
+            else:
+                enemies.append((other_name, score))
 
         def add_section(title, emoji, relationships, color):
             if relationships:

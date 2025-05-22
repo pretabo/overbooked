@@ -158,14 +158,18 @@ class DevDiplomacyUI(QWidget):
         a_name = self.wrestler_a_dropdown.currentText()
         b_name = self.wrestler_b_dropdown.currentText()
         if a_name in self.wrestler_ids and b_name in self.wrestler_ids:
-            self.diplomacy_system.adjust_relationship({"name": a_name}, {"name": b_name}, "Dev Boost", +20)
+            a_id = self.wrestler_ids[a_name]
+            b_id = self.wrestler_ids[b_name]
+            self.diplomacy_system.adjust_relationship(a_id, b_id, "Dev Boost", +20)
             self.log_event(f"Boosted relationship: {a_name} ↔ {b_name}")
 
     def hurt_relationship(self):
         a_name = self.wrestler_a_dropdown.currentText()
         b_name = self.wrestler_b_dropdown.currentText()
         if a_name in self.wrestler_ids and b_name in self.wrestler_ids:
-            self.diplomacy_system.adjust_relationship({"name": a_name}, {"name": b_name}, "Dev Hurt", -20)
+            a_id = self.wrestler_ids[a_name]
+            b_id = self.wrestler_ids[b_name]
+            self.diplomacy_system.adjust_relationship(a_id, b_id, "Dev Hurt", -20)
             self.log_event(f"Hurt relationship: {a_name} ↔ {b_name}")
 
     def decay_relationships(self):

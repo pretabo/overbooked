@@ -3,17 +3,19 @@ from PyQt5.QtWidgets import (
     QPushButton, QStackedWidget, QApplication, QMessageBox
 )
 from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QPixmap
 
 from game_state import get_game_date, advance_game_date, is_event_locked, set_event_lock
 from ui.roster_ui_pyqt import RosterUI  # Assuming you've ported this
 from ui.calendar_view_ui_pyqt import CalendarViewUI  # Placeholder for future
 from ui.promo_test_ui import PromoTestUI
 from ui.theme import apply_styles
-from PyQt5.QtGui import QIcon
 from datetime import datetime
 from diplomacy_system import DiplomacySystem
 import logging
 import game_state_debug
+from ui.wrestler_creator_ui import WrestlerCreatorUI  # Add this import
+from ui.debug_ui_pyqt import DebugUI  # Import our new debug UI
 
 
 # Import other screens here as needed
@@ -23,6 +25,11 @@ class MainApp(QMainWindow):
         super().__init__()
         self.setWindowTitle("Overbooked: Wrestling Simulator")
         self.setGeometry(100, 100, 1280, 720)
+        
+        # Set the application icon
+        app_icon = QIcon("image_assets/logo.png")
+        self.setWindowIcon(app_icon)
+        
         self.pending_news_item = None
         self.diplomacy_system = DiplomacySystem()
 
@@ -55,6 +62,13 @@ class MainApp(QMainWindow):
         main_layout.addWidget(self.left_panel_widget)
         main_layout.addWidget(self.right_panel, 4)
 
+        # Add logo at the top of left panel
+        logo_label = QLabel()
+        logo_pixmap = QIcon("image_assets/logo.png").pixmap(200, 100)
+        logo_label.setPixmap(logo_pixmap)
+        logo_label.setAlignment(Qt.AlignCenter)
+        logo_label.setContentsMargins(10, 10, 10, 0)
+        self.left_panel.addWidget(logo_label)
 
         # Date container
         self.date_container = QWidget()
@@ -95,6 +109,7 @@ class MainApp(QMainWindow):
         self.add_nav_button("Event Calendar", self.load_calendar_ui)
         self.add_nav_button("Event Overview", self.load_event_overview_ui)
         self.add_nav_button("View Roster", self.load_roster_ui)
+        self.add_nav_button("Add Wrestler", self.load_wrestler_creator_ui)
         self.add_nav_button("Simulate Match", self.load_match_ui)
         self.add_nav_button("Test Promos", self.load_promo_test_ui)
         self.add_nav_button("Manage Storylines", self.load_storyline_management_ui)
@@ -301,13 +316,10 @@ class MainApp(QMainWindow):
         self.right_panel.setCurrentWidget(dev_screen)
 
     def load_debug_menu_ui(self):
-        """Load the debug menu UI for testing and diagnostics"""
-        from ui.debug_menu_ui import DebugMenuUI
         self.clear_right_panel()
-        debug_menu = DebugMenuUI()
-        self.right_panel.addWidget(debug_menu)
-        self.right_panel.setCurrentWidget(debug_menu)
-        logging.info("Debug menu UI loaded")
+        debug_ui = DebugUI(diplomacy_system=self.diplomacy_system)
+        self.right_panel.addWidget(debug_ui)
+        self.right_panel.setCurrentWidget(debug_ui)
         
     def save_game_state_manually(self):
         from game_state import save_game_state
@@ -370,3 +382,10 @@ class MainApp(QMainWindow):
         except Exception as e:
             logging.error(f"Unexpected error in storyline management: {str(e)}")
             self.load_news_feed_ui()  # Go back to news feed
+
+    def load_wrestler_creator_ui(self):
+        """Load the wrestler creator UI in the right panel"""
+        self.clear_right_panel()
+        creator_ui = WrestlerCreatorUI()
+        self.right_panel.addWidget(creator_ui)
+        self.right_panel.setCurrentWidget(creator_ui)

@@ -47,6 +47,11 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
 
+    # Set application icon
+    app_icon = QIcon("image_assets/logo.png")
+    app.setWindowIcon(app_icon)
+    logging.debug("Set application icon from image_assets/logo.png")
+
     # Apply global font
     app.setFont(QFont("Fira Code", 16))
     logging.debug("Applied global font: Fira Code, 16pt")
