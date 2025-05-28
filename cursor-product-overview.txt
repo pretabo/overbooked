@@ -1,0 +1,77 @@
+# OVERBOOKED: Wrestling Promotion Management Simulator
+
+## PRODUCT OVERVIEW
+Overbooked is a comprehensive wrestling promotion management simulator that combines the creative elements of booking wrestling shows with the business management aspects of running a successful promotion. Players assume the role of a wrestling promoter responsible for every aspect of the operation, from signing wrestlers and booking compelling matches to managing finances and building a loyal fanbase.
+
+## CORE FEATURES
+
+### Wrestler Management
+- The game features an extensive wrestler database system that maintains detailed information on each performer's physical attributes, in-ring abilities, personality traits, and crowd appeal, with more than 28 distinct statistics that determine performance across technical execution, psychology, charisma, and physical capabilities.
+- Players can create custom wrestlers with a sophisticated creation system that allows for detailed customization of appearance, moveset, personality, and backstory, enabling the building of a unique roster that fits the player's promotional vision.
+- The contract management system simulates the real-world complexity of talent relations, including salary negotiations, exclusivity clauses, creative control provisions, and appearance frequency requirements that impact both wrestler satisfaction and the promotion's budget.
+- Wrestler development happens organically through match experience, with performers improving skills based on match types, quality of opponents, and crowd reception, allowing players to strategically book matches that develop specific areas of talent.
+
+### Match System
+- The match engine simulates realistic wrestling contests with dynamic pacing, momentum shifts, and signature moments that reflect each wrestler's unique style and capabilities, creating matches that feel authentic to the personalities involved.
+- Players can book a variety of match types, from standard singles matches to complex multi-person stipulation matches, each with different rule sets that affect strategy, risk, and potential match quality based on the participants' specialties.
+- The match quality system evaluates performance based on wrestler compatibility, build-up, match placement, and in-ring chemistry, providing detailed feedback that helps players understand what combinations create the most compelling entertainment.
+- Post-match analysis tools provide comprehensive breakdowns of performance factors, crowd reaction, and narrative advancement, helping players refine their booking strategy for maximum entertainment value and storyline progression.
+
+### Promo System
+- The sophisticated promo engine allows wrestlers to engage in verbal confrontations that advance storylines and develop character, with outcomes determined by charisma stats, audience connection, and narrative context.
+- Players can direct the general tone and content of promos while the system generates realistic dialogue that matches each wrestler's established character and current storyline positioning, maintaining consistency in character voice.
+- Promo quality impacts crowd investment in storylines and can significantly affect the perceived value of upcoming matches, creating a compelling interplay between verbal segments and in-ring action that mirrors real-world wrestling programming.
+- Special promo types like championship celebrations, retirement speeches, and surprise returns are available as booking options, each with unique mechanics and audience impact potential that can dramatically shift show momentum.
+
+### Business Management
+- The comprehensive merchandise system allows players to create and market branded products ranging from t-shirts and action figures to digital content and live event exclusives, with pricing strategy, design quality, and wrestler popularity all affecting sales performance.
+- Venue management includes selecting appropriate arenas based on market size, rental costs, and production capabilities, with the potential to build owned venues as a long-term investment strategy for established promotions.
+- The financial system tracks revenue streams (ticket sales, merchandise, media rights) and expenses (talent contracts, venue costs, production) with detailed reports that help players understand their promotion's fiscal health and growth trajectory.
+- Media rights negotiations become available as the promotion grows, simulating the real-world importance of television and streaming deals with factors like exclusivity, production requirements, and audience metrics affecting contract value.
+
+### User Interface
+- The modern PyQt5-based interface provides intuitive navigation between different aspects of promotion management, with separate windows for roster management, event booking, financial reports, and wrestler development.
+- The calendar view allows players to plan events strategically across weeks and months, considering factors like market saturation, talent recovery time, and storyline pacing for maximum impact and profitability.
+- Detailed wrestler profile screens display comprehensive statistics, career history, relationship status with other roster members, and current storyline involvement, helping players make informed booking decisions.
+- The match and event planning interface features drag-and-drop functionality for easily arranging match order, assigning participants, and structuring shows for optimal pacing and audience engagement.
+
+### Technical Features
+- The SQLite database system ensures persistent storage of all game data with efficient querying capabilities for complex wrestler interactions, historical records, and business analytics.
+- The modular codebase architecture separates key game systems (wrestler management, match engine, promo system, business logic) for maintainability and extensibility, allowing for continuous feature enhancement.
+- Comprehensive logging capabilities capture detailed information about game events for debugging purposes and provide players with access to historical data for analysis and strategy refinement.
+- Performance optimization ensures smooth operation even when simulating complex events with multiple wrestlers and intricate business calculations, maintaining gameplay flow without technical interruptions.
+
+## TARGET AUDIENCE
+- Wrestling fans seeking a deeper understanding of the booking and business aspects of professional wrestling entertainment
+- Management simulation enthusiasts who enjoy complex systems with multiple interconnected variables and long-term strategic planning
+- Creative storytellers who want to craft compelling wrestling narratives and character arcs within a structured gameplay environment
+- Business strategy gamers interested in the unique challenges of entertainment industry management with its blend of creative and financial decision-making
+
+## UNIQUE SELLING POINTS
+- Unparalleled depth in wrestling simulation that accurately reflects the complex interplay between in-ring performance, character development, and business considerations
+- Dynamic storytelling system that allows for both carefully crafted narratives and emergent storylines based on wrestler interactions and unexpected match outcomes
+- Comprehensive business management that goes beyond simple booking to include all aspects of running a wrestling promotion from merchandise to media rights
+- Authentic wrestling experience created by wrestling fans for wrestling fans, capturing the unique blend of athletics, drama, and spectacle that defines professional wrestling
+
+## FUTURE POTENTIAL
+- Community features allowing players to share custom wrestlers, promotions, and storylines through an integrated workshop system
+- Expanded international booking options with region-specific wrestling styles, business models, and fan preferences
+- Historical scenarios based on famous periods in wrestling history with authentic roster recreations and period-appropriate challenges
+- Multiplayer capabilities enabling competitive or cooperative play between multiple promotion owners within the same wrestling universe
+
+## TECHNICAL REQUIREMENTS
+- Windows, macOS, or Linux operating system
+- 4GB RAM minimum (8GB recommended)
+- 2GHz dual-core processor or better
+- 500MB available storage space
+- 1280x720 display resolution or higher
+
+## DEVELOPMENT STATUS
+- Core game systems (wrestler database, match engine, basic promo system, financial tracking) fully implemented
+- User interface complete with all necessary screens and navigation
+- Ongoing improvements to simulation accuracy and feature depth based on player feedback
+- Active development roadmap for expanding gameplay options and enhancing existing systems
+
+## BUSINESS MODEL
+- Single-purchase game with free updates for core functionality improvements
+- Potential for optional DLC content featuring specialized match types, promotion scenarios, or expanded creation tools 

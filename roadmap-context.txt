@@ -1,0 +1,172 @@
+
+    WRESTLING SIMULATOR – REMAINING FEATURE ROADMAP
+    =================================================
+    This document outlines the remaining core features and systems to be implemented in the wrestling simulator. It is written in a format designed for direct use with Cursor AI or similar tools for structured implementation planning. All features are presented in kayfabe – the game treats wrestling as a legitimate competitive sport.
+
+    ================================
+    CORE SIMULATION & EVENT LOGIC
+    ================================
+    Buff System Engine:
+        - Implement a system that allows wrestlers to receive buffs or debuffs triggered by in-game events.
+        - Each buff will have an activation condition, a stat effect (e.g. +10% stamina recovery), and a cooldown before reactivation.
+        - Buffs affect wrestler behaviour or stats in matches, promos, or diplomacy.
+    
+    Match Interruptions:
+        - Add mechanics where wrestlers can interfere in ongoing matches, either as scripted events or as impromptu surprises based on ongoing feuds.
+        - The system should support both run-ins and full multi-person match transitions.
+    
+    Cheating Mechanics:
+        - Wrestlers can attempt to cheat during matches (low blows, holding ropes, foreign objects).
+        - The referee has a chance to detect and penalise based on bias, awareness, or alignment.
+        - Player is occasionally prompted to respond to a caught cheat: allow, disqualify, or restart match.
+    
+    Impromptu Segments:
+        - Matches and promos may occur spontaneously during shows due to backstage tensions, rivalries, or crowd energy shifts.
+        - These should override or insert themselves into the scheduled event card, requiring player response.
+    
+    Promo Hijacking & Requests:
+        - Wrestlers can request promo time or forcibly take it (especially if heel or angry).
+        - Requests are influenced by rivalries, momentum, and past booking.
+        - Player can approve, deny, or delay the segment.
+    
+    Event Flow Engine:
+        - Dynamically alter events in progress. Matches may be cut short, segments may be skipped or reordered due to time constraints or backstage drama.
+        - Integrates impromptu and interruption systems and tracks cause/effect.
+    
+    Player Decision Hooks:
+        - Add prompts during events where the player must decide how to respond to unexpected events (e.g. intervene in a beatdown, approve an unbooked promo).
+
+    ================================
+    MATCH ENGINE ENHANCEMENTS
+    ================================
+    Referee AI:
+        - Referees track legal/illegal actions and make independent decisions based on bias, alignment, or match psychology.
+        - Some referees might miss or ignore cheating attempts.
+    
+    Match Strategy Layer:
+        - Before the match, player or AI selects a strategy (technical, aggressive, crowd-pleaser).
+        - Strategy influences move selection and affects stamina, crowd reaction, and quality.
+    
+    Spotlight System:
+        - Automatically detect and flag high-drama moments (big reversals, comebacks, rare moves) for highlight reels.
+        - Affects match ratings and post-show reports.
+    
+    Cheating & Drama Detection:
+        - Track dramatic swings such as multiple false finishes or comebacks.
+        - Contributes to match quality score and audience heat level.
+    
+    Effort, Psychology & Flow Metrics:
+        - Expand match reports to show depth metrics: effort level, pacing quality, flow strength, synergy between performers.
+
+    ================================
+    PROMO SYSTEM ENHANCEMENTS
+    ================================
+    Segment Types:
+        - Support for solo monologue, face call-outs, heel interruptions, and full-on confrontations.
+        - Segment type affects possible crowd and wrestler reactions.
+    
+    Beat-by-Beat Flow:
+        - Promos progress through multiple talking beats and response cues.
+        - Each beat can gain or lose crowd support, affect morale, or trigger interruptions.
+    
+    Promo Trigger System:
+        - Internal system tracks wrestler emotion, popularity, and rivalries.
+        - Triggers promos dynamically (e.g. “Wrestler X wants to respond to being attacked last week”).
+    
+    Interruption & Crowd Risk:
+        - Promos are rarely uninterrupted. System allows organic interruptions that build or derail segments.
+        - Player must decide whether to allow an interruption or intervene.
+    
+    Post-Promo Outcomes:
+        - Promos affect wrestler heat, crowd mood, morale, and ongoing storylines.
+        - Strong promos can initiate feuds, boost match interest, or influence faction dynamics.
+
+    ================================
+    STORYLINE & BOOKING SYSTEMS
+    ================================
+    Dynamic Segment Flow:
+        - Ability to leave some show segments unbooked, allowing the system to insert impromptu promos or matches.
+        - Player can still override or reschedule segments mid-show.
+    
+    Storyline Tracker UI:
+        - Visual tool showing long-term story arcs, current progress, characters involved, and expected resolution.
+        - Flags plot inconsistencies or unfinished angles.
+    
+    Feud Heat System:
+        - Tracks how “hot” a feud is based on segment quality, crowd reaction, betrayal intensity, and match outcomes.
+        - Heat influences match quality and crowd anticipation.
+    
+    Angle Scripting Tool:
+        - Book specific non-match angles (e.g. contract signings, backstage brawls).
+        - Success influenced by charisma, feud context, and randomness.
+    
+    Narrative Continuity Engine:
+        - Enforces kayfabe consistency across characters.
+        - Automatically adjusts alignment if wrestler acts out of character too often (e.g. a face constantly using weapons).
+
+    ================================
+    BACKSTAGE DIPLOMACY & MORALE
+    ================================
+    Morale System:
+        - Wrestlers have a morale value influenced by booking, injuries, respect, and locker room perks.
+        - Low morale leads to poor performance or refusal to perform.
+    
+    Faction Buffs & Penalties:
+        - Wrestlers in alliances or stables receive buffs when booked together.
+        - Betrayals or neglect result in faction heat or morale drops.
+    
+    Promise & Request Tracker:
+        - Every commitment to a wrestler (push, promo, title shot) is logged.
+        - Failure to fulfil a promise has consequences: morale drops, allies turning, increased promo outbursts.
+    
+    Reputation & Respect Layer:
+        - Veteran wrestlers expect deference, rookies seek exposure.
+        - Hierarchies influence backstage politics and wrestler behaviour.
+    
+    Push & Spotlight Requests:
+        - Wrestlers request pushes based on momentum and ego.
+        - Denial may result in sulking, outbursts, or crowd appeals.
+
+    ================================
+    BUSINESS & FINANCIAL SIMULATION
+    ================================
+    Revenue Model:
+        - Simulate income from TV ratings, live attendance, merchandise, and PPV buys.
+    
+    Expense Model:
+        - Track salaries, travel, set design, medical costs, etc.
+        - Players can adjust production value and perks, affecting costs and morale.
+    
+    Segment ROI Tracking:
+        - Each segment’s audience pop and financial impact is tracked.
+        - Used to assess show quality and business efficiency.
+    
+    Merchandise System:
+        - Players can design merch lines (e.g. t-shirts, action figures).
+        - Sales influenced by wrestler popularity, match results, and promo effectiveness.
+    
+    Financial Health Score:
+        - A proprietary score based on income/expense ratio, debt, and growth potential.
+        - Used as a long-term health indicator for the promotion.
+    
+    Balance Test Suite:
+        - Internal simulation tool to test long-term financial balance.
+        - Runs auto-booked shows over time and graphs revenue growth vs. cost.
+    
+    ================================
+    AI-CONTROLLED RIVAL PROMOTIONS (STUB)
+    ================================
+    Rival AI Promotions:
+        - At least 1–3 AI promotions simulate events, build feuds, and crown champions.
+    
+    AI Booking Logic:
+        - Stub logic for event creation, roster pushes, and booking decisions.
+    
+    Talent Poaching:
+        - AI may attempt to sign top stars. Players are notified and can respond.
+    
+    TV Ratings System:
+        - Basic popularity and TV share model to simulate competition.
+    
+    News Integration:
+        - News Feed surfaces major AI events: title changes, injuries, scandals, and talent movements.

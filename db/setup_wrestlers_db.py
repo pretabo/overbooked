@@ -1,6 +1,6 @@
 import sqlite3
-from db.utils import db_path
-from db.wrestler_test_data import TEST_WRESTLERS, SIGNATURE_MOVES, FINISHERS
+from utils import db_path
+from wrestler_test_data import TEST_WRESTLERS, SIGNATURE_MOVES, FINISHERS
 
 # === Connect to wrestlers.db
 conn = sqlite3.connect(db_path("wrestlers.db"))
@@ -55,6 +55,11 @@ CREATE TABLE wrestlers (
     injury TEXT,
     height INTEGER,
     weight INTEGER,
+    backstage_influence INTEGER DEFAULT 50,
+    company_standing INTEGER DEFAULT 50,
+    industry_respect INTEGER DEFAULT 50,
+    fan_base_strength INTEGER DEFAULT 50,
+    media_presence INTEGER DEFAULT 50,
     FOREIGN KEY (finisher_id) REFERENCES finishers(id)
 )
 """)
@@ -155,6 +160,13 @@ for wrestler in TEST_WRESTLERS:
     loyalty_level = wrestler["loyalty_level"]
     ambition = wrestler["ambition"]
     injury = wrestler["injury"]
+    
+    # Set reputation stats based on existing reputation - will be overwritten by CSV data later
+    backstage_influence = reputation
+    company_standing = reputation
+    industry_respect = reputation
+    fan_base_strength = reputation
+    media_presence = reputation
 
     if len(attributes) != 28:
         raise ValueError(f"❌ {name} has {len(attributes)} attributes (expected 28)")
@@ -171,15 +183,18 @@ for wrestler in TEST_WRESTLERS:
             contract_type, contract_expiry, contract_value,
             contract_promises, contract_company,
             locker_room_impact, loyalty_level, ambition, injury,
-            height, weight
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            height, weight, backstage_influence, company_standing, 
+            industry_respect, fan_base_strength, media_presence
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     """, (
         name, reputation, condition, finisher_id,
         fan_popularity, marketability, merchandise_sales,
         contract_type, contract_expiry, contract_value,
         contract_promises, contract_company,
         locker_room_impact, loyalty_level, ambition, injury,
-        wrestler["height"], wrestler["weight"]
+        wrestler["height"], wrestler["weight"],
+        backstage_influence, company_standing, 
+        industry_respect, fan_base_strength, media_presence
     ))
 
     wrestler_id = cursor.lastrowid

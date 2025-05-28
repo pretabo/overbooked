@@ -1,0 +1,103 @@
+# OVERBOOKED - Wrestling Promotion Management Simulator
+# Product Roadmap
+
+## CURRENTLY IMPLEMENTED FEATURES
+
+### Core Game Structure
+- Modular architecture with distinct systems for wrestlers, matches, promos, and business management
+- PyQt5-based UI with separate windows for different game aspects
+- SQLite database for persistent storage
+- Basic gameplay loop of creating wrestlers, booking matches, and managing a promotion
+
+### Wrestler Management
+- Comprehensive wrestler database with stats, relationships, and career tracking
+- Wrestler creator with customization options
+- Basic contract and roster management
+- Division assignments and championship tracking
+
+### Match System
+- Basic match engine with realistic simulation
+- Multiple match types with different dynamics
+- Rating system based on wrestler compatibility and skills
+- Basic in-match momentum tracking
+
+### Promo System
+- Simple promo engine for verbal confrontations
+- Basic confidence tracking
+- Simple momentum system
+- Basic crowd energy variables
+
+### Business Management
+- Merchandise system with various items (T-shirts, Hats, etc.)
+- Revenue tracking and profit/loss statements
+- Basic venue management for events
+
+## PLANNED FEATURES (ROADMAP)
+
+### PHASE 1: Advanced Psychology & Booking (Q3 2024)
+- [ ] Expand psychology stat effects on match pacing and structure
+- [ ] Implement detailed tracking of wrestler fatigue and injury risk based on match frequency and style
+- [ ] Create comprehensive match type specialization system with bonuses for wrestlers who excel in specific formats
+- [ ] Develop advanced booking impact system where match placement affects wrestler development and fan reaction
+- [ ] Build AI booking assistant that suggests optimal matches based on wrestler psychology and fan expectations
+- [ ] Implement wrestler development tracking where match quality influences skill growth in relevant areas
+
+### PHASE 2: Kayfabe & Narrative Enhancement (Q4 2024)
+- [ ] Create advanced face/heel behavior system with nuanced alignment options
+- [ ] Implement narrative continuity tracking that remembers past feuds and story beats
+- [ ] Develop angle scripting tools for planning multi-week storylines with branching possibilities
+- [ ] Build system for tracking narrative consistency and storyline coherence
+- [ ] Implement fan memory mechanics where inconsistent booking damages immersion
+- [ ] Create emergent storytelling system where wrestler interactions can generate unexpected storylines
+
+### PHASE 3: Enhanced Promo System (Q1 2025)
+- [ ] Implement beat-by-beat modeling of promos with multiple segments
+- [ ] Create detailed promo styles and strategy options
+- [ ] Build comprehensive momentum system with multiple vectors
+- [ ] Develop promo risk management mechanics with high-risk, high-reward options
+- [ ] Implement audience reaction tracking that affects promo performance
+- [ ] Create advanced promo quality metrics based on content, delivery, and character consistency
+
+### PHASE 4: Match Design & Drama Enhancement (Q1-Q2 2025)
+- [ ] Implement road agent system with pre-match planning options
+- [ ] Create advanced style synergy mechanics where complementary styles produce better matches
+- [ ] Develop detailed stamina mechanics that affect move execution and match pacing
+- [ ] Build match psychology system where wrestler personality affects match structure
+- [ ] Implement effort tracking where wrestlers can push beyond their limits at cost
+- [ ] Create dramatic comeback mechanics tied to wrestler charisma and fan support
+
+### PHASE 5: Diplomacy & Faction Management (Q2 2025)
+- [ ] Implement comprehensive morale system affected by booking decisions
+- [ ] Create promise tracking where failing to deliver on promises damages relationships
+- [ ] Develop faction mechanics with internal politics and power struggles
+- [ ] Build loyalty system where decisions affect wrestler retention
+- [ ] Implement policy decisions that affect company culture and wrestler satisfaction
+- [ ] Create backstage influence system where veteran wrestlers can sway others
+
+### PHASE 6: Crowd Simulation & Design Philosophy (Q3 2025)
+- [ ] Implement show momentum meter tracking crowd energy throughout an event
+- [ ] Create dynamic crowd reaction system based on match quality and booking consistency
+- [ ] Develop mid-show adjustment options to recover from poor segments
+- [ ] Build advanced sandbox features for emergent gameplay
+- [ ] Implement mod support for community-created content
+- [ ] Create detailed analytics dashboard for evaluating promotion performance
+
+## TECHNICAL REQUIREMENTS
+- Database schema updates to support new systems
+- UI enhancements for new feature controls
+- Match and promo engine optimizations to handle increased complexity
+- Data migration tools for existing save files
+
+## SUCCESS METRICS
+- Match quality improvements of 25% with new psychology system
+- 50% increase in promo variety and quality scores
+- 30% improvement in long-term player retention
+- 40% increase in narrative consistency scores
+- Player satisfaction surveys showing 80%+ positive response to new systems
+
+## RISK MITIGATION
+- Regular user testing throughout development
+- Feature flag system to enable/disable new systems
+- Backward compatibility for save files
+- Performance benchmarking to ensure smooth gameplay
+- Community feedback integration through development forums 

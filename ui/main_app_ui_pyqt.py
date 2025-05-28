@@ -389,3 +389,63 @@ class MainApp(QMainWindow):
         creator_ui = WrestlerCreatorUI()
         self.right_panel.addWidget(creator_ui)
         self.right_panel.setCurrentWidget(creator_ui)
+
+    def setup_navigation(self):
+        # Date container at the top
+        date_container = QHBoxLayout()
+        self.date_label = QLabel(get_game_date())
+        self.date_label.setStyleSheet("color: white; font-size: 16pt;")
+        date_container.addWidget(self.date_label)
+        date_container.setAlignment(Qt.AlignCenter)
+        self.left_panel.addLayout(date_container)
+        
+        # Navigation buttons
+        self.left_panel.addSpacing(20)
+        
+        # Add buttons with icons
+        roster_btn = QPushButton("Roster")
+        roster_btn.clicked.connect(self.load_roster_ui)
+        apply_styles(roster_btn, "button_nav")
+        self.left_panel.addWidget(roster_btn)
+        
+        calendar_btn = QPushButton("Calendar")
+        calendar_btn.clicked.connect(self.load_calendar_ui)
+        apply_styles(calendar_btn, "button_nav")
+        self.left_panel.addWidget(calendar_btn)
+        
+        promo_btn = QPushButton("Promo Test")
+        promo_btn.clicked.connect(self.load_promo_test_ui)
+        apply_styles(promo_btn, "button_nav")
+        self.left_panel.addWidget(promo_btn)
+        
+        # Add versus promo button
+        versus_promo_btn = QPushButton("Versus Promo")
+        versus_promo_btn.clicked.connect(self.load_versus_promo_ui)
+        apply_styles(versus_promo_btn, "button_nav")
+        self.left_panel.addWidget(versus_promo_btn)
+        
+        wrestler_creator_btn = QPushButton("Wrestler Creator")
+        wrestler_creator_btn.clicked.connect(self.load_wrestler_creator_ui)
+        apply_styles(wrestler_creator_btn, "button_nav")
+        self.left_panel.addWidget(wrestler_creator_btn)
+        
+        self.left_panel.addStretch()
+        
+        # Development tools section
+        dev_label = QLabel("Development Tools")
+        dev_label.setStyleSheet("color: #aaa; font-size: 10pt;")
+        dev_label.setAlignment(Qt.AlignCenter)
+        self.left_panel.addWidget(dev_label)
+        
+        # Debug menu button
+        debug_btn = QPushButton("Debug Menu")
+        debug_btn.clicked.connect(self.load_debug_menu_ui)
+        apply_styles(debug_btn, "button_flat")
+        self.left_panel.addWidget(debug_btn)
+
+    def load_versus_promo_ui(self):
+        self.clear_right_panel()
+        from ui.versus_promo_ui import VersusPromoUI
+        versus_ui = VersusPromoUI()
+        self.right_panel.addWidget(versus_ui)
+        self.right_panel.setCurrentWidget(versus_ui)

@@ -100,11 +100,18 @@ class RosterUI(QWidget):
 
             for col_idx, val in enumerate(values):
                 item = QTableWidgetItem()
-                item.setData(Qt.DisplayRole, val)
+                
+                # Ensure text is properly set for display, especially for the name column
+                if col_idx == 1:  # Name column
+                    item.setText(str(val))
+                else:
+                    item.setData(Qt.DisplayRole, val)
+                
                 item.setTextAlignment(Qt.AlignCenter)
                 item.setFont(QtGui.QFont("Fira Code", 16, QtGui.QFont.Bold))
                 item.setForeground(QtGui.QColor("#000"))
                 item.setBackground(QtGui.QColor("#42494a"))
+                
                 if col_idx == 0:
                     item.setData(Qt.UserRole, wrestler_id)
 

@@ -1,20 +1,26 @@
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtGui import QIcon
-from PyQt5.QtGui import QFont
+#!/usr/bin/env python3
+"""
+Overbooked: A Professional Wrestling Promotion Simulator
+Main application entry point
+"""
+
 import sys
 import os
 import logging
+from src.ui.main_app_ui_pyqt import MainApp
+from PyQt5.QtWidgets import QApplication, QShortcut
+from PyQt5.QtGui import QIcon, QFont, QKeySequence
 import datetime
-from ui.main_app_ui_pyqt import MainApp
 
 # Configure logging system
 def setup_logging():
     # Create logs directory if it doesn't exist
-    if not os.path.exists('logs'):
-        os.makedirs('logs')
+    logs_dir = os.path.join(os.path.dirname(__file__), 'logs')
+    if not os.path.exists(logs_dir):
+        os.makedirs(logs_dir)
     
     # Set up logging with both file and console handlers
-    log_filename = f"logs/overbooked_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+    log_filename = f"{logs_dir}/overbooked_{datetime.datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
     
     # Configure root logger
     logger = logging.getLogger()
@@ -38,8 +44,7 @@ def setup_logging():
     
     logging.info(f"Logging initialized. Log file: {log_filename}")
 
-
-if __name__ == '__main__':
+def main():
     # Initialize logging
     setup_logging()
     logging.info("=== Overbooked: Wrestling Simulator ===")
@@ -47,10 +52,18 @@ if __name__ == '__main__':
     
     app = QApplication(sys.argv)
 
+    # Set paths relative to this file
+    base_dir = os.path.dirname(__file__)
+    assets_dir = os.path.join(base_dir, "data", "assets", "image_assets")
+    
     # Set application icon
-    app_icon = QIcon("image_assets/logo.png")
-    app.setWindowIcon(app_icon)
-    logging.debug("Set application icon from image_assets/logo.png")
+    icon_path = os.path.join(assets_dir, "logo.png")
+    if os.path.exists(icon_path):
+        app_icon = QIcon(icon_path)
+        app.setWindowIcon(app_icon)
+        logging.debug(f"Set application icon from {icon_path}")
+    else:
+        logging.warning(f"Icon file not found at {icon_path}")
 
     # Apply global font
     app.setFont(QFont("Fira Code", 16))
@@ -58,16 +71,26 @@ if __name__ == '__main__':
 
     # Apply global stylesheet with error handling
     try:
-        with open("ui/theme.qss", "r") as f:
+        theme_path = os.path.join(base_dir, "src", "ui", "theme.qss")
+        with open(theme_path, "r") as f:
             app.setStyleSheet(f.read())
-        logging.debug("Applied global stylesheet from ui/theme.qss")
+        logging.debug(f"Applied global stylesheet from {theme_path}")
     except FileNotFoundError:
-        logging.error("Error: Stylesheet file 'ui/theme.qss' not found.")
-        print("Error: Stylesheet file 'ui/theme.qss' not found.")
+        logging.error(f"Error: Stylesheet file '{theme_path}' not found.")
+        print(f"Error: Stylesheet file '{theme_path}' not found.")
 
     # Launch window in full screen
     window = MainApp()
-    window.setWindowIcon(QIcon("image_assets/logo.png"))  # Ensure the path is correct
+    if os.path.exists(icon_path):
+        window.setWindowIcon(QIcon(icon_path))
     window.showFullScreen()  # ✅ This enables full screen at launch
+    
+    # Add keyboard shortcut for exiting application (ESC key)
+    exit_shortcut = QShortcut(QKeySequence("Esc"), window)
+    exit_shortcut.activated.connect(app.quit)
+    
     logging.info("Application window launched in fullscreen mode")
     sys.exit(app.exec_())
+
+if __name__ == '__main__':
+    main() 

@@ -15,14 +15,15 @@ from PyQt5.QtCore import pyqtSignal
 from diplomacy_hooks import handle_match_relationship_effects
 import time
 from storyline.storyline_manager import StorylineManager
+from PyQt5.QtWidgets import QApplication
 
 
 SPEED_MAP = {
-    "Slower": 3000,
-    "Slow": 2000,
-    "Normal": 1000,
-    "Fast": 500,
-    "Faster": 10,
+    "Slower": 3000,  # 3 seconds
+    "Slow": 2000,    # 2 seconds
+    "Normal": 1000,  # 1 second
+    "Fast": 500,     # 0.5 seconds
+    "Faster": 100,   # 0.1 seconds - was too fast at 10ms
 }
 
 
@@ -62,20 +63,21 @@ class MatchWorker(QObject):
                 self.log.emit(msg, attacker)
                 return
                 
-            # For normal mode, emit message and wait briefly, but with a timeout
+            # For normal mode, emit message and wait for UI to process it
             self.log.emit(msg, attacker)
             
-            # Wait for a maximum of 3 seconds to prevent deadlock
+            # Wait for a maximum of 1 second to prevent deadlock
             start_time = time.time()
             self.beat_in_progress = True
             
-            # Shorter, safer wait loop with timeout
-            wait_count = 0
-            while self.beat_in_progress and not self.paused and (time.time() - start_time) < 3.0:
-                QThread.msleep(50)  # Longer sleep to reduce CPU usage
-                wait_count += 1
-                if wait_count > 30:  # Force continue after ~1.5 seconds
-                    break
+            # More efficient wait loop with timeout
+            while self.beat_in_progress and not self.paused and (time.time() - start_time) < 1.0:
+                QThread.msleep(10)  # Short sleep for responsiveness
+            
+            # Add a small consistent delay between beats for readability
+            current_delay = self.get_delay() // 4  # Use 1/4 of the main delay
+            if current_delay > 0 and not self.paused:
+                QThread.msleep(current_delay)
 
         result = simulate_match(
             self.w1,
@@ -129,18 +131,26 @@ class WrestlingMatchUI(QWidget):
         left_box.setAlignment(Qt.AlignLeft | Qt.AlignTop)
         self.left_name = ShadowTextLabel(self.w1["name"])
         
-        # Fix width and alignment for left name
-        self.left_name.setWordWrap(True)
-        self.left_name.setFixedWidth(300)  # Reduced from 400
-        self.left_name.setAlignment(Qt.AlignLeft)  # Changed from center
+        # Fix width and alignment for left name - use ellipsis for long names
+        self.left_name.setWordWrap(False)  # Changed to false to prevent layout shifting
+        self.left_name.setFixedWidth(300)
+        self.left_name.setFixedHeight(100)  # Increased height for bigger text
+        self.left_name.setAlignment(Qt.AlignLeft | Qt.AlignVCenter)  # Left align with vertical center
+        
+        # Use much larger font for names
+        font = self.left_name.font()
+        font.setPointSize(36)  # Increased from 24pt to 36pt for much bigger text
+        font.setBold(True)  # Make sure it's bold
+        self.left_name.setFont(font)
+        
         self.left_name.setStyleSheet("""
             font-family: Georgia, serif;
-            font-size: 48pt;
             font-weight: bold;
-            color: {W1_COLOUR};
+            color: #2c3e50;
             padding: 12px;
             border-radius: 8px;
             text-align: left;
+            text-overflow: ellipsis;
         """)
 
         # Create horizontal row with stars + stamina + damage
@@ -159,17 +169,22 @@ class WrestlingMatchUI(QWidget):
         self.right_name = ShadowTextLabel(self.w2["name"])
         
         # Fix width and alignment for right name
-        self.right_name.setWordWrap(True)
-        self.right_name.setFixedWidth(300)  # Reduced from 400
-        self.right_name.setAlignment(Qt.AlignRight)  # Changed from center
+        self.right_name.setWordWrap(False)  # Changed to false to prevent layout shifting
+        self.right_name.setFixedWidth(300)
+        self.right_name.setFixedHeight(100)  # Increased height for bigger text
+        self.right_name.setAlignment(Qt.AlignRight | Qt.AlignVCenter)  # Right align with vertical center
+        
+        # Use same font settings
+        self.right_name.setFont(font)  # Use the same large font as left name
+        
         self.right_name.setStyleSheet("""
             font-family: Georgia, serif;
-            font-size: 48pt;
             font-weight: bold;
-            color: {W2_COLOUR};
+            color: #7f1d1d;
             padding: 12px;
             border-radius: 8px;
             text-align: right;
+            text-overflow: ellipsis;
         """)
 
         self.right_stars = QLabel(self.format_star_stats(self.w2))
@@ -302,6 +317,11 @@ class WrestlingMatchUI(QWidget):
         self.pause_button.clicked.connect(self.toggle_pause)
         control_row.addWidget(self.pause_button)
 
+        # Finish Match button
+        self.finish_button = QPushButton("Finish Match")
+        apply_styles(self.finish_button, "button_red")
+        self.finish_button.clicked.connect(self.finish_match_quick)
+        control_row.addWidget(self.finish_button)
 
         # Continue button
         self.continue_button = QPushButton("Continue")
@@ -542,11 +562,21 @@ class WrestlingMatchUI(QWidget):
             
         # Schedule processing of next beat after delay
         if self.commentary_queue:
-            delay = self.get_speed_delay()
+            # Use a much shorter delay in fast mode
+            if hasattr(self, 'fast_mode') and self.fast_mode:
+                delay = 10  # Very short delay in fast mode
+            else:
+                delay = self.get_speed_delay()
+                
+            # Make sure delay is not zero to avoid UI freezing
+            delay = max(10, delay)
             self.display_timer.start(delay)
         elif hasattr(self, 'worker'):
             # Ensure we're not stuck waiting
             self.worker.beat_in_progress = False
+            
+        # Force UI update to ensure smooth display
+        QApplication.processEvents()
 
     def on_beat_completed(self):
         """Handle signal that a beat is complete."""
@@ -778,3 +808,29 @@ class WrestlingMatchUI(QWidget):
         
         # Show match summary
         self.show_match_summary(result)
+
+    def finish_match_quick(self):
+        """Quickly finish the match by enabling fast mode and clearing the queue."""
+        if hasattr(self, 'worker'):
+            # Enable fast mode to skip delays
+            self.worker.fast_mode = True
+            
+            # Clear existing commentary queue to prevent backlog
+            self.commentary_queue = []
+            
+            # Stop any active timers
+            self.display_timer.stop()
+            
+            # Disable UI updates until the end
+            if hasattr(self, 'worker'):
+                self.worker.beat_in_progress = False
+            
+            # Hide the finish button after clicking
+            self.finish_button.setVisible(False)
+            
+            # Add a "finishing match" message
+            self.commentary_box.clear()
+            self.commentary_box.append("<div style='text-align:center; font-size:16pt; color:#ffc107;'>⏩ Finishing match quickly...</div>")
+            
+            # Process events to update UI
+            QApplication.processEvents()

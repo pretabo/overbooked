@@ -69,7 +69,9 @@ class ManageEventUI(QWidget):
         self.name_to_id = {}
         for id_, name in get_all_wrestlers():
             self.name_to_id[name] = id_
-            item = QListWidgetItem(name)
+            item = QListWidgetItem()
+            # Explicitly set the text for display
+            item.setText(str(name))
             item.setData(Qt.UserRole, name)
             self.wrestler_list.addItem(item)
         self.wrestler_list.itemDoubleClicked.connect(self.handle_wrestler_double_click)

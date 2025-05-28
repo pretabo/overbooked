@@ -5,7 +5,7 @@ from PyQt5.QtWidgets import (
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon, QPixmap
 
-from src.core.game_state import get_game_date, advance_game_date, is_event_locked, set_event_lock
+from src.core.game_state import get_game_date, advance_day, save_game_state, load_game_state
 from src.ui.roster_ui_pyqt import RosterUI
 from src.ui.calendar_view_ui_pyqt import CalendarViewUI
 from src.ui.promo_test_ui import PromoTestUI
@@ -13,9 +13,16 @@ from src.ui.theme import apply_styles
 from datetime import datetime
 from src.core.diplomacy_system import DiplomacySystem
 import logging
-import src.core.game_state_debug as game_state_debug
+try:
+    import src.core.game_state_debug as game_state_debug
+except ImportError:
+    game_state_debug = None
 from src.ui.wrestler_creator_ui import WrestlerCreatorUI
 from src.ui.debug_ui_pyqt import DebugUI
+from src.ui.business_ui import BusinessDashboard
+from src.ui.business_stats_ui import BusinessStatsUI
+from src.ui.testing_ui import TestingUI
+from src.ui.merchandise_manager_ui import MerchandiseManagerUI
 
 
 # Import other screens here as needed
@@ -104,25 +111,16 @@ class MainApp(QMainWindow):
         self.left_panel.addWidget(self.continue_button)
         apply_styles(self.continue_button, "button_blue")
 
-
-        # Nav buttons
+        # Main navigation buttons
         self.add_nav_button("News Feed", self.load_news_feed_ui)
         self.add_nav_button("Event Calendar", self.load_calendar_ui)
         self.add_nav_button("Event Overview", self.load_event_overview_ui)
         self.add_nav_button("View Roster", self.load_roster_ui)
-        self.add_nav_button("Add Wrestler", self.load_wrestler_creator_ui)
-        self.add_nav_button("Simulate Match", self.load_match_ui)
-        self.add_nav_button("Test Promos", self.load_promo_test_ui)
-        self.add_nav_button("Test Event Promo", self.load_event_promo_test)
         self.add_nav_button("Manage Storylines", self.load_storyline_management_ui)
-
-
-        self.add_nav_button("[DEV] Diplomacy Manager", self.load_dev_diplomacy_ui)
-        self.add_nav_button("[DEBUG] Debug Menu", self.load_debug_menu_ui)
-
+        self.add_nav_button("Business", self.load_business_stats_ui)
+        self.add_nav_button("Testing", self.load_testing_ui)
 
         self.left_panel.addStretch()  # Pushes everything above upward
-
 
         save_btn = QPushButton("Save Game")
         apply_styles(save_btn, "button_red")  
@@ -132,9 +130,7 @@ class MainApp(QMainWindow):
         exit_btn = QPushButton("Exit Game")
         apply_styles(exit_btn, "button_red")  # Optional: red button style
         exit_btn.clicked.connect(QApplication.quit)
-
         self.left_panel.addWidget(exit_btn)
-
 
         self.pending_news_item = None
 
@@ -154,49 +150,74 @@ class MainApp(QMainWindow):
             self.right_panel.removeWidget(widget)
             widget.deleteLater()
 
+    def load_business_dashboard(self):
+        """Load the business dashboard UI"""
+        self.clear_right_panel()
+        dashboard = BusinessDashboard()
+        
+        # Add button to access merchandise manager
+        merchandise_btn = QPushButton("Merchandise Manager")
+        merchandise_btn.clicked.connect(self.load_merchandise_manager_ui)
+        dashboard.layout().addWidget(merchandise_btn)
+        
+        self.right_panel.addWidget(dashboard)
+        self.right_panel.setCurrentWidget(dashboard)
+
+    def load_business_stats_ui(self):
+        """Load the business stats UI"""
+        self.clear_right_panel()
+        stats_ui = BusinessStatsUI()
+        # Connect the dashboard button to load the dashboard
+        stats_ui.open_business_dashboard = self.load_business_dashboard
+        self.right_panel.addWidget(stats_ui)
+        self.right_panel.setCurrentWidget(stats_ui)
+        
+    def load_merchandise_manager_ui(self):
+        """Load the merchandise manager UI"""
+        self.clear_right_panel()
+        merchandise_ui = MerchandiseManagerUI()
+        self.right_panel.addWidget(merchandise_ui)
+        self.right_panel.setCurrentWidget(merchandise_ui)
+
+    def load_testing_ui(self):
+        """Load the testing UI with all testing tools"""
+        self.clear_right_panel()
+        testing_ui = TestingUI(load_screen_callback=self.load_testing_screen)
+        self.right_panel.addWidget(testing_ui)
+        self.right_panel.setCurrentWidget(testing_ui)
+
+    def load_testing_screen(self, screen_name):
+        """Load a specific testing screen"""
+        if screen_name == "add_wrestler":
+            self.load_wrestler_creator_ui()
+        elif screen_name == "simulate_match":
+            self.load_match_ui()
+        elif screen_name == "test_promos":
+            self.load_promo_test_ui()
+        elif screen_name == "test_event_promos":
+            self.load_event_promo_test()
+        elif screen_name == "diplomacy_manager":
+            self.load_dev_diplomacy_ui()
+        elif screen_name == "debug_menu":
+            self.load_debug_menu_ui()
+        elif screen_name == "news_feed":
+            self.load_news_feed_ui()
+
     def advance_game_day(self):
-        from src.ui.event_manager_helper import get_all_events
-        from datetime import datetime
-        from src.core.game_state import get_game_date, is_event_locked, set_event_lock, advance_game_date
+        """Advance the game by one day."""
+        # Update the game date
+        from src.core.game_state import advance_day, save_game_state
+        advance_day()
 
-        if is_event_locked():
-            logging.warning("Date locked — event must be played first.")
-            print("🚫 Date locked — event must be played first.")
-            return
-
-        logging.info("Advancing game date...")
-        print("🧭 Advancing game date...")
-        advance_game_date()
-        self.diplomacy_system.save_to_db()
-        logging.info("[Diplomacy] Autosaved relationships after date advance.")
-        print("[Diplomacy] Autosaved relationships after date advance.")
-
-        new_date = datetime.strptime(get_game_date(), "%A, %d %B %Y")
-        formatted = new_date.strftime("%A\n%d %B %Y")
+        # Update the date label
+        today = datetime.strptime(get_game_date(), "%A, %d %B %Y")
+        formatted = today.strftime("%A\n%d %B %Y")
         self.date_label.setText(formatted)
 
-        todays_date = datetime.strptime(get_game_date(), "%A, %d %B %Y").strftime("%Y-%m-%d")
-        logging.info(f"Checking for events on {todays_date}")
-        print("📨 Checking for events on", todays_date)
-
-        for ev in get_all_events():
-            if ev[5] == todays_date:
-                logging.info(f"Event found: {ev}")
-                print("🔎 Event row:", ev)
-                event_id, name = ev[0], ev[1]
-                logging.info(f"Event FOUND on {todays_date}: {name}")
-                print("🎯 Event FOUND on", todays_date, ":", name)
-                set_event_lock(True)
-
-                self.show_news_item({
-                    "type": "event",
-                    "text": f"📢 An event is scheduled for today: {name}",
-                    "action_label": "Play Event",
-                    "event_id": event_id
-                })
-                break  # still allow news feed to load
-
-        # ✅ Always go back to the News Feed
+        # Save game state
+        save_game_state()
+        
+        # Update the UI
         self.load_news_feed_ui()
 
     def load_roster_ui(self):
@@ -264,12 +285,10 @@ class MainApp(QMainWindow):
     def play_event_from_news(self, event_id):
         from src.ui.event_manager_helper import get_event_by_id
         from src.ui.event_summary_pyqt import EventSummaryUI
-        from src.core.game_state import set_event_lock
 
         event_data = get_event_by_id(event_id)
 
         def on_event_complete():
-            set_event_lock(False)
             self.pending_news_item = None
             self.load_news_feed_ui()
 
@@ -313,7 +332,7 @@ class MainApp(QMainWindow):
     def load_dev_diplomacy_ui(self):
         from src.ui.dev_diplomacy_ui import DevDiplomacyUI
         self.clear_right_panel()
-        dev_screen = DevDiplomacyUI(diplomacy_system=self.diplomacy_system, on_back=self.load_news_feed_ui)
+        dev_screen = DevDiplomacyUI(diplomacy_system=self.diplomacy_system, on_back=self.load_testing_ui)
         self.right_panel.addWidget(dev_screen)
         self.right_panel.setCurrentWidget(dev_screen)
 
@@ -328,7 +347,8 @@ class MainApp(QMainWindow):
         self.diplomacy_system.save_to_db()
         save_game_state()
         logging.info("Manual save completed")
-        game_state_debug.export_debug_state()  # Also export debug state
+        if game_state_debug:
+            game_state_debug.export_debug_state()  # Also export debug state
         print("[Save] Manual Save Complete!")
         QMessageBox.information(self, "Save Complete", 
                                "Game state saved successfully.\nDebug state also exported.")
@@ -361,30 +381,14 @@ class MainApp(QMainWindow):
                     f"Event promo complete! Rating: {result.get('final_rating', 0):.1f}"
                 )
                 # Go back to test promo UI
-                self.load_promo_test_ui()
+                self.load_testing_ui()
                 
             promo_ui = EventPromoUI(wrestler, on_finish=on_promo_finish, diplomacy_system=self.diplomacy_system)
             self.right_panel.addWidget(promo_ui)
             self.right_panel.setCurrentWidget(promo_ui)
         else:
             QMessageBox.warning(self, "Error", "No wrestlers found in database.")
-            self.load_promo_test_ui()
-
-    def build_news_feed_ui(self):
-        """Build the news feed UI with storyline management button."""
-        news_feed = QWidget()
-        layout = QVBoxLayout(news_feed)
-        
-        # Add storyline management button
-        storyline_btn = QPushButton("Manage Storylines")
-        apply_styles(storyline_btn, "button_blue")
-        storyline_btn.clicked.connect(self.load_storyline_management_ui)
-        layout.addWidget(storyline_btn)
-        
-        # Add other news feed content here
-        layout.addStretch()
-        
-        return news_feed
+            self.load_testing_ui()
 
     def load_storyline_management_ui(self):
         """Load the storyline management UI."""

@@ -1,0 +1,100 @@
+🗺️ Remaining Feature Roadmap – Wrestling Simulator
+📌 Core Simulation Systems
+ Buff System Engine
+
+ Match Interruption & Cheating Mechanics
+
+ Promo Trigger Logic & Impromptu Segment Engine
+
+ Event Flow Engine (dynamic branching & emergent surprises)
+
+ AI-Controlled Rival Promotions (stub logic + progression rules)
+
+🧠 Match Engine Enhancements
+ Referee AI (cheat detection, bias, reactions)
+
+ Spot Highlight System (emergent big moments)
+
+ Match Strategy Layer (pre-match tactics + player responses mid-match)
+
+ Flow/Climax/Drama Scoring Enhancements
+
+ False Finish & Comeback Detectors
+
+🎤 Promo System Extensions
+ Monologue / Call-out / Interruption logic
+
+ Confidence, crowd heat, charisma interplay
+
+ Storyline-advancing promo triggers
+
+ Multiple outcome branching paths based on delivery + crowd reaction
+
+ Wrestler-requested promos (kayfabe-driven request engine)
+
+📅 Booking & Storyline Tools
+ Dynamic segment slotting (impromptu vs. booked)
+
+ Narrative continuity tracker (face/heel logic, unresolved threads)
+
+ Angle Scripting with risk/failure logic
+
+ Storyline Timeline UI with arc resolution tracking
+
+ Feud & Rivalry Engine with crowd engagement scores
+
+🤼 Diplomacy, Politics & Morale
+ Buff trigger hooks (booking decisions, promo fallout, promises)
+
+ Promise tracking + faction response
+
+ Veteran vs. rookie dynamics
+
+ Locker room status system (cliques, tension, respect levels)
+
+ Passive and active requests (pushes, title shots, promo time)
+
+🧾 Business Simulation (Launch-Critical)
+ Full revenue model (tickets, merch, PPV, TV contracts)
+
+ Expenses (travel, salaries, production, marketing)
+
+ Event ROI calculation per segment
+
+ Promotion financial health score
+
+ Detailed test suite to validate simulation balance
+
+ Merchandise creation interface + sales simulation
+
+📈 AI Promotion Simulation (Stubbed)
+ AI rosters, events, title histories
+
+ Competition for talent
+
+ Basic TV rating logic & reputation progression
+
+ Cross-promotion opportunities (optional booking threads)
+
+ Sim-only view of competitor results and rumours
+
+🛠 Modding & Tools
+ Buff Database (thousands of unique triggers, effects, and cooldowns)
+
+ JSON-based modding framework
+
+ Data validation tools for custom content
+
+ Optional export templates (wrestlers, match types, feuds, shows)
+
+🧪 Developer Utilities
+ Match sim batch tester with drama, quality, reversal, buff metrics
+
+ Buff injection tester + cooldown visualiser
+
+ Promo impact debugger
+
+ Economy balance sandbox with sliders and graphs
+
+ Test scenario builder (custom feud outcomes, crowd reaction presets)
+
