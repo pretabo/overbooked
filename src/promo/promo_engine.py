@@ -6,20 +6,31 @@ import statistics
 
 class PromoEngine:
     def __init__(self, wrestler, crowd_reaction=50, tone="boast", theme="legacy", opponent=None):
-        # Extract wrestler stats directly from the wrestler object
+        # Extract wrestler stats safely using getattr for objects or get for dictionaries
+        def get_wrestler_attr(wrestler, attr, default=10):
+            if wrestler is None:
+                return default
+            if hasattr(wrestler, attr):
+                return getattr(wrestler, attr)
+            elif isinstance(wrestler, dict) and attr in wrestler:
+                return wrestler[attr]
+            return default
+            
+        # Build stats dictionary using the helper function
         self.stats = {
-            "promo_delivery": wrestler.get("promo_delivery", 10),
-            "fan_engagement": wrestler.get("fan_engagement", 10),
-            "entrance_presence": wrestler.get("entrance_presence", 10),
-            "presence_under_fire": wrestler.get("presence_under_fire", 10),
-            "confidence": wrestler.get("confidence", 10),
-            "focus": wrestler.get("focus", 10),
-            "resilience": wrestler.get("resilience", 10),
-            "adaptability": wrestler.get("adaptability", 10),
-            "risk_assessment": wrestler.get("risk_assessment", 10),
-            "determination": wrestler.get("determination", 10),
-            "reputation": wrestler.get("reputation", 10)
+            "promo_delivery": get_wrestler_attr(wrestler, "promo_delivery", 10),
+            "fan_engagement": get_wrestler_attr(wrestler, "fan_engagement", 10),
+            "entrance_presence": get_wrestler_attr(wrestler, "entrance_presence", 10),
+            "presence_under_fire": get_wrestler_attr(wrestler, "presence_under_fire", 10),
+            "confidence": get_wrestler_attr(wrestler, "confidence", 10),
+            "focus": get_wrestler_attr(wrestler, "focus", 10),
+            "resilience": get_wrestler_attr(wrestler, "resilience", 10),
+            "adaptability": get_wrestler_attr(wrestler, "adaptability", 10),
+            "risk_assessment": get_wrestler_attr(wrestler, "risk_assessment", 10),
+            "determination": get_wrestler_attr(wrestler, "determination", 10),
+            "reputation": get_wrestler_attr(wrestler, "reputation", 10)
         }
+        
         self.wrestler = wrestler
         self.opponent = opponent
         self.crowd_reaction = crowd_reaction

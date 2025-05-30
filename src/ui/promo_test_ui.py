@@ -2,7 +2,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QLabel, QPushButton,
     QComboBox, QTextEdit, QHBoxLayout, QProgressBar,
     QSlider, QFrame, QGroupBox, QTabWidget, QSplitter,
-    QScrollArea, QMessageBox
+    QScrollArea, QMessageBox, QStackedWidget
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal, QPropertyAnimation, QDateTime, QEasingCurve, pyqtProperty, QPoint
 from PyQt5.QtGui import QPainter, QPainterPath, QColor, QLinearGradient, QPen
@@ -453,24 +453,45 @@ class PromoDisplayWidget(QWidget):
         self.fast_forward_button.setEnabled(False)
 
     def set_wrestlers(self, wrestler1, wrestler2=None):
-        """Set the wrestlers for this display."""
+        """Set the wrestlers for the promo display."""
         self.wrestler1 = wrestler1
         self.wrestler2 = wrestler2
         self.is_versus_mode = wrestler2 is not None
         
         # Update UI based on versus mode
         if self.is_versus_mode:
-            self.w1_meters.setTitle(wrestler1["name"])
-            self.w2_meters.setTitle(wrestler2["name"])
+            # Handle Wrestler objects or dictionaries
+            if hasattr(wrestler1, 'name'):
+                self.w1_meters.setTitle(wrestler1.name)
+            else:
+                self.w1_meters.setTitle(wrestler1["name"])
+                
+            if hasattr(wrestler2, 'name'):
+                self.w2_meters.setTitle(wrestler2.name)
+            else:
+                self.w2_meters.setTitle(wrestler2["name"])
+                
             self.w2_meters.setVisible(True)
         else:
-            self.w1_meters.setTitle(wrestler1["name"])
+            if hasattr(wrestler1, 'name'):
+                self.w1_meters.setTitle(wrestler1.name)
+            else:
+                self.w1_meters.setTitle(wrestler1["name"])
+                
             self.w2_meters.setVisible(False)
 
     def set_speed_preset(self, preset):
         """Set speed based on preset button."""
-        speeds = {"Slow": 5000, "Normal": 3500, "Fast": 2000}  # in milliseconds (increased from previous values)
-        self.speed = speeds[preset]
+        # Map of preset names to speeds in milliseconds
+        speeds = {"Slow": 5000, "Normal": 3500, "Fast": 2000, 0: 5000, 1: 3500, 2: 2000, 3: 1000}
+        
+        # Handle numeric or string presets
+        if preset in speeds:
+            self.speed = speeds[preset]
+        else:
+            # Default to normal speed if preset not found
+            self.speed = 3500
+            
         if self.is_playing:
             self.timer.setInterval(self.speed)
 
@@ -725,7 +746,16 @@ class PromoDisplayWidget(QWidget):
                     self.w1_cashin_button.setEnabled(momentum >= 70 and not self.w1_momentum_cashed)
         
         # Get wrestler info for styling
-        wrestler_name = beat.get("wrestler", {}).get("name", "Wrestler")
+        if "wrestler" in beat:
+            if hasattr(beat["wrestler"], "name"):
+                wrestler_name = beat["wrestler"].name
+            elif isinstance(beat["wrestler"], dict) and "name" in beat["wrestler"]:
+                wrestler_name = beat["wrestler"]["name"]
+            else:
+                wrestler_name = "Wrestler"
+        else:
+            wrestler_name = "Wrestler"
+            
         wrestler_color = beat.get("wrestler_color", "#66CCFF") if is_versus_beat else "#66CCFF"
         
         # Get score for big display
@@ -1531,21 +1561,25 @@ class PromoSummaryWidget(QWidget):
         self.setVisible(True)
 
 class PromoTestUI(QWidget):
-    def __init__(self, on_finish=None):
+    # Add signal for promo completion
+    promo_complete = pyqtSignal()
+    
+    def __init__(self, wrestler=None, on_finish=None):
         super().__init__()
+        self.setWindowTitle("Promo Test")
+        self.setMinimumSize(800, 600)
+        self.wrestler = wrestler
         self.on_finish = on_finish
-        self.promo_result = None
-        self.beat_mode_active = False
-        self.wrestlers = get_all_wrestlers()
-        self.wrestler1 = None
-        self.wrestler2 = None
-        
-        # Set size constraints to prevent the widget from expanding too much
-        self.setMinimumHeight(500)
-        self.setMaximumHeight(800)
-        
+        self.current_promo = None
+        self.all_wrestlers = get_all_wrestlers()
         self.initUI()
+        self.current_step = "config"  # config, promo, summary
+        self.setStyleSheet("background-color: #333;")
         
+        # Auto-start promo if wrestler is provided
+        if self.wrestler:
+            self.start_promo()
+
     def initUI(self):
         main_layout = QVBoxLayout()
         self.setLayout(main_layout)
@@ -1562,9 +1596,7 @@ class PromoTestUI(QWidget):
         scroll_layout.setContentsMargins(0, 0, 0, 0)
         
         # Create a stacked widget to switch between screens
-        self.stacked_widget = QWidget()
-        stacked_layout = QVBoxLayout(self.stacked_widget)
-        stacked_layout.setContentsMargins(0, 0, 0, 0)
+        self.stacked_widget = QStackedWidget()
         scroll_layout.addWidget(self.stacked_widget)
         
         # Create main promo screen
@@ -1709,12 +1741,12 @@ class PromoTestUI(QWidget):
         promo_layout.addWidget(self.promo_display)
         
         # Add promo screen to stacked widget
-        stacked_layout.addWidget(self.promo_screen)
+        self.stacked_widget.addWidget(self.promo_screen)
         
         # Create summary screen with new widget
         self.summary_screen = PromoSummaryWidget()
         self.summary_screen.continue_clicked.connect(self.handle_continue)
-        stacked_layout.addWidget(self.summary_screen)
+        self.stacked_widget.addWidget(self.summary_screen)
         
         # Set the scroll content and add to main layout
         scroll_area.setWidget(scroll_content)
@@ -1727,7 +1759,7 @@ class PromoTestUI(QWidget):
         if include_none:
             combo.addItem("None", None)
             
-        for wrestler_id, wrestler_name in self.wrestlers:
+        for wrestler_id, wrestler_name in self.all_wrestlers:
             combo.addItem(wrestler_name, wrestler_id)
 
     def handle_promo_end(self):
@@ -1736,77 +1768,103 @@ class PromoTestUI(QWidget):
         if self.promo_result:
             # Check if this was a versus promo
             if "final_scores" in self.promo_result:
-                self.summary_screen.show_versus_summary(self.promo_result, self.wrestler1, self.wrestler2)
+                # Get the wrestlers from the promo display
+                w1 = self.promo_display.wrestler1
+                w2 = self.promo_display.wrestler2
+                self.summary_screen.show_versus_summary(self.promo_result, w1, w2)
             else:
                 self.summary_screen.show_single_summary(self.promo_result)
                 
-            # Make the summary screen visible (it's a widget in the stacked layout)
-            self.promo_screen.setVisible(False)
-            self.summary_screen.setVisible(True)
-        
+            # Switch to summary screen
+            self.stacked_widget.setCurrentWidget(self.summary_screen)
+        else:
+            # If no result, just reset UI
+            self.enable_controls()
+            
     def handle_continue(self):
-        """Called when the user clicks continue after promo end."""
-        # Reset UI for another promo
+        """Handle the continue button in the summary UI"""
+        # Reset UI state for another promo test
         self.enable_controls()
         
-        # Switch back to the promo screen
-        self.summary_screen.setVisible(False)
-        self.promo_screen.setVisible(True)
-        
-        if self.on_finish and self.promo_result:
-            self.on_finish(self.promo_result)
+        # If we were invoked with a specific wrestler, signal completion
+        if self.wrestler:
+            # Emit the completion signal
+            self.promo_complete.emit()
+            
+            # Call the on_finish callback if provided, but with a delay to avoid C++ object deleted error
+            if self.on_finish:
+                QTimer.singleShot(100, self.on_finish)
+        else:
+            # Reset to configuration screen if we're in normal mode
+            self.stacked_widget.setCurrentWidget(self.promo_screen)
             
     def start_promo(self):
-        """Start a promo with the selected wrestler(s) and settings."""
-        # Disable controls
-        self.start_button.setEnabled(False)
-        self.speed_slider.setEnabled(False)
-        self.w1_combo.setEnabled(False)
-        self.w2_combo.setEnabled(False)
-        self.tone_dropdown.setEnabled(False)
-        self.theme_dropdown.setEnabled(False)
-        
-        # Get selected wrestlers
-        w1_id = self.w1_combo.currentData()
-        w2_id = self.w2_combo.currentData()
-        
-        if not w1_id:
-            self.enable_controls()
-            return
+        """Start a promo with the current settings."""
+        # Get selected wrestler(s)
+        if self.wrestler:
+            # Use the wrestler passed in the constructor
+            w1 = self.wrestler
+            w2 = None
+        else:
+            # Get selected wrestler from dropdown
+            w1_id = self.w1_combo.currentData()
+            w2_id = self.w2_combo.currentData()
             
-        self.wrestler1 = load_wrestler_by_id(w1_id)
-        if not self.wrestler1:
-            self.enable_controls()
-            return
-            
-        # Set up tone and theme
-        tone = self.tone_dropdown.currentText()
-        theme = self.theme_dropdown.currentText()
-        
-        # Check if we have an opponent selected
-        if w2_id:
-            # Run versus promo
-            self.wrestler2 = load_wrestler_by_id(w2_id)
-            if not self.wrestler2:
+            if not w1_id:
+                QMessageBox.warning(self, "Error", "Please select a wrestler")
+                return
+                
+            w1 = load_wrestler_by_id(w1_id)
+            if not w1:
+                QMessageBox.warning(self, "Error", "Could not load wrestler data")
                 self.enable_controls()
                 return
                 
-            # Run the versus promo
-            engine = VersusPromoEngine(self.wrestler1, self.wrestler2)
+            if w2_id:
+                w2 = load_wrestler_by_id(w2_id)
+                if not w2:
+                    QMessageBox.warning(self, "Error", "Could not load opponent data")
+                    self.enable_controls()
+                    return
+            else:
+                w2 = None
+        
+        # Get selected tone and theme
+        tone = self.tone_dropdown.currentText()
+        theme = self.theme_dropdown.currentText()
+        
+        # Disable controls while running promo
+        self.start_button.setEnabled(False)
+        self.test_event_promo_button.setEnabled(False)
+        self.tone_dropdown.setEnabled(False)
+        self.theme_dropdown.setEnabled(False)
+        self.w1_combo.setEnabled(False)
+        self.w2_combo.setEnabled(False)
+        
+        # Set speed preset based on slider
+        speed_preset = self.speed_slider.value()
+        self.promo_display.set_speed_preset(speed_preset)
+        
+        # Switch to promo display screen
+        self.stacked_widget.setCurrentWidget(self.promo_screen)
+        
+        # Run the promo generation
+        if w2:
+            # Versus promo
+            engine = VersusPromoEngine(w1, w2)
             result = engine.simulate()
             
-            # Format the versus promo result into a format that PromoDisplayWidget can handle
-            display_beats = self.format_versus_promo_for_display(result, self.wrestler1, self.wrestler2)
+            # Format for display
+            display_beats = self.format_versus_promo_for_display(result, w1, w2)
             self.promo_result = result  # Store full result for later
             
-            # Show in the promo display
-            self.promo_display.set_wrestlers(self.wrestler1, self.wrestler2)
+            # Show in promo display
+            self.promo_display.set_wrestlers(w1, w2)
             self.promo_display.set_beats(display_beats)
         else:
-            # Run single promo
-            self.wrestler2 = None
+            # Single promo
             engine = PromoEngine(
-                self.wrestler1,
+                w1,
                 tone=tone,
                 theme=theme,
                 opponent=None
@@ -1814,9 +1872,12 @@ class PromoTestUI(QWidget):
             result = engine.simulate()
             self.promo_result = result
             
-            # Show single promo display
-            self.promo_display.set_wrestlers(self.wrestler1)
+            # Show in promo display
+            self.promo_display.set_wrestlers(w1)
             self.promo_display.set_beats(result["beats"])
+            
+        # Automatically start playing
+        self.promo_display.toggle_play()
 
     def format_versus_promo_for_display(self, versus_result, wrestler1, wrestler2):
         """Format a versus promo result into a structure PromoDisplayWidget can display."""
@@ -1897,13 +1958,14 @@ class PromoTestUI(QWidget):
         return display_beats
     
     def enable_controls(self):
-        """Re-enable all UI controls."""
+        """Re-enable all controls."""
         self.start_button.setEnabled(True)
-        self.speed_slider.setEnabled(True)
-        self.w1_combo.setEnabled(True)
-        self.w2_combo.setEnabled(True)
+        self.test_event_promo_button.setEnabled(True)
         self.tone_dropdown.setEnabled(True)
         self.theme_dropdown.setEnabled(True)
+        self.w1_combo.setEnabled(True)
+        self.w2_combo.setEnabled(True)
+        self.speed_slider.setEnabled(True)
 
     def update_speed_display(self):
         """Update the speed display based on the slider value."""

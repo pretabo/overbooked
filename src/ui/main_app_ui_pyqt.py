@@ -23,6 +23,9 @@ from src.ui.business_ui import BusinessDashboard
 from src.ui.business_stats_ui import BusinessStatsUI
 from src.ui.testing_ui import TestingUI
 from src.ui.merchandise_manager_ui import MerchandiseManagerUI
+from src.ui.event_manager_helper import get_all_events
+import sqlite3
+from src.db.utils import db_path
 
 
 # Import other screens here as needed
@@ -44,6 +47,10 @@ class MainApp(QMainWindow):
 
         logging.info("Initializing MainApp")
         self.diplomacy_system.load_from_db()
+        
+        # Ensure relationships are properly loaded from the database
+        self.refresh_relationships()
+        
         logging.info("[Diplomacy] Loaded relationships from database.")
 
 
@@ -204,20 +211,106 @@ class MainApp(QMainWindow):
             self.load_news_feed_ui()
 
     def advance_game_day(self):
-        """Advance the game by one day."""
-        # Update the game date
-        from src.core.game_state import advance_day, save_game_state
-        advance_day()
+        """Advance the game by one day and check for events."""
+        from src.core.game_state import (
+            get_game_date, is_event_locked, set_event_lock,
+            advance_day, save_game_state, check_and_clear_event_lock
+        )
 
+        # First check if we're locked because of an event
+        event_locked = is_event_locked()
+        
+        # Try to clear the lock automatically if no event exists for today
+        if event_locked:
+            lock_cleared = check_and_clear_event_lock()
+            if lock_cleared:
+                event_locked = False
+                logging.info("Event lock cleared automatically as no event exists for today")
+                print("🔓 Event lock cleared automatically as no event exists for today")
+        
+        # If still locked, we must have a real event that needs to be played
+        if event_locked:
+            logging.warning("🔒 Date locked — event must be played first.")
+            print("🔒 Date locked — event must be played first.")
+            # Show a message box to inform the user
+            QMessageBox.warning(
+                self, 
+                "Event Locked", 
+                "You need to play the scheduled event before advancing the date.",
+                QMessageBox.Ok
+            )
+            return
+
+        # Advance the game date
+        logging.info("Advancing game date...")
+        print("🧭 Advancing game date...")
+        advance_day()
+        
+        # Save relationships
+        self.diplomacy_system.save_to_db()
+        logging.info("[Diplomacy] Autosaved relationships after date advance.")
+        
         # Update the date label
         today = datetime.strptime(get_game_date(), "%A, %d %B %Y")
         formatted = today.strftime("%A\n%d %B %Y")
         self.date_label.setText(formatted)
+        
+        # Format today's date for database comparison
+        todays_date = today.strftime("%Y-%m-%d")
+        logging.info(f"Checking for events on {todays_date}")
+        print(f"📅 Current game date: {today.strftime('%A, %d %B %Y')}")
+        print(f"📅 Checking for events on {todays_date}")
 
+        # Get all events and check for matches
+        all_events = get_all_events()
+        event_found = False
+        
+        # Debug output
+        print(f"📊 Found {len(all_events)} events in database")
+        
+        for ev in all_events:
+            ev_id, ev_name, _, _, _, ev_date = ev[0], ev[1], ev[2], ev[3], ev[4], ev[5]
+            print(f"🔍 Checking event #{ev_id}: {ev_name} - Date: {ev_date}")
+            
+            # Check if the event is for today
+            if ev_date == todays_date:
+                event_found = True
+                logging.info(f"Event found for today: {ev_name} (ID: {ev_id})")
+                print(f"🎯 Event FOUND on {todays_date}: {ev_name}")
+                
+                # Lock the game
+                set_event_lock(True)
+                print("🔒 Event lock ENABLED")
+                
+                # Save game state with the lock
+                save_game_state()
+                
+                # Show the event in the news feed
+                self.show_news_item({
+                    "type": "event",
+                    "text": f"📢 An event is scheduled for today: {ev_name}",
+                    "action_label": "Play Event",
+                    "event_id": ev_id
+                })
+                
+                # Show a message box to inform the user
+                QMessageBox.information(
+                    self, 
+                    "Event Ready", 
+                    f"An event '{ev_name}' is scheduled for today. You need to play it before continuing.",
+                    QMessageBox.Ok
+                )
+                
+                break
+        
+        if not event_found:
+            print("✅ No events found for today")
+        
         # Save game state
         save_game_state()
+        print("💾 Game state saved")
         
-        # Update the UI
+        # Update the UI - go to news feed
         self.load_news_feed_ui()
 
     def load_roster_ui(self):
@@ -285,10 +378,18 @@ class MainApp(QMainWindow):
     def play_event_from_news(self, event_id):
         from src.ui.event_manager_helper import get_event_by_id
         from src.ui.event_summary_pyqt import EventSummaryUI
+        from src.core.game_state import set_event_lock, save_game_state
 
         event_data = get_event_by_id(event_id)
+        print(f"🎮 Playing event from news: {event_data['name']} (ID: {event_id})")
 
         def on_event_complete():
+            # Make sure to unlock events when returning from the event screen
+            set_event_lock(False)
+            save_game_state()
+            print("🔓 Event completed - unlocking (from on_event_complete)")
+            
+            # Clear the pending news item and return to news feed
             self.pending_news_item = None
             self.load_news_feed_ui()
 
@@ -361,8 +462,8 @@ class MainApp(QMainWindow):
         
     def load_event_promo_test(self):
         """Load the event promo UI with a random wrestler for testing."""
-        from ui.event_promo_ui import EventPromoUI
-        from core.match_engine import get_all_wrestlers, load_wrestler_by_id
+        from src.ui.event_promo_ui import EventPromoUI
+        from src.core.match_engine import get_all_wrestlers, load_wrestler_by_id
         import random
         
         self.clear_right_panel()
@@ -469,7 +570,35 @@ class MainApp(QMainWindow):
 
     def load_versus_promo_ui(self):
         self.clear_right_panel()
-        from ui.versus_promo_ui import VersusPromoUI
+        from src.ui.versus_promo_ui import VersusPromoUI
         versus_ui = VersusPromoUI()
         self.right_panel.addWidget(versus_ui)
         self.right_panel.setCurrentWidget(versus_ui)
+
+    def refresh_relationships(self):
+        """Force reload relationships from the database"""
+        try:
+            # First save any existing relationships
+            self.diplomacy_system.save_to_db()
+            
+            # Clear current relationships 
+            self.diplomacy_system.relationships = {}
+            
+            # Reload from the database
+            conn = sqlite3.connect(db_path("relationships.db"))
+            cursor = conn.cursor()
+            
+            # Load relationships
+            cursor.execute("SELECT wrestler1_id, wrestler2_id, relationship_value FROM relationships")
+            relationships = cursor.fetchall()
+            
+            # Initialize relationship dictionary
+            for w1, w2, value in relationships:
+                key = self.diplomacy_system._make_key(w1, w2)
+                self.diplomacy_system.relationships[key] = value
+                
+            conn.close()
+            
+            logging.info(f"Refreshed {len(self.diplomacy_system.relationships)} relationships")
+        except Exception as e:
+            logging.error(f"Error refreshing relationships: {e}")

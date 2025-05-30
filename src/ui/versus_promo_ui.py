@@ -5,9 +5,9 @@ from PyQt5.QtWidgets import (
 )
 from PyQt5.QtCore import Qt, QTimer, pyqtSignal
 from PyQt5.QtGui import QColor
-from match_engine import get_all_wrestlers, load_wrestler_by_id
-from ui.theme import apply_styles
-from promo.versus_promo_engine import VersusPromoEngine
+from src.core.match_engine import get_all_wrestlers, load_wrestler_by_id
+from src.ui.theme import apply_styles
+from src.promo.versus_promo_engine import VersusPromoEngine
 import statistics
 
 class VersusPromoUI(QWidget):
@@ -188,13 +188,25 @@ class VersusPromoUI(QWidget):
         
         # Display promo text
         html = "<h2>Versus Promo Results</h2>"
-        html += f"<h3>{w1['name']} vs {w2['name']}</h3>"
+        
+        # Get wrestler names safely
+        w1_name = w1.name if hasattr(w1, 'name') else w1['name'] if isinstance(w1, dict) else str(w1)
+        w2_name = w2.name if hasattr(w2, 'name') else w2['name'] if isinstance(w2, dict) else str(w2)
+        
+        html += f"<h3>{w1_name} vs {w2_name}</h3>"
         
         # Display each beat
         for i, beat in enumerate(result["beats"]):
             if "wrestler" in beat and "promo_line" in beat and beat["wrestler"] is not None:
                 wrestler = beat["wrestler"]
-                name = wrestler["name"]
+                
+                # Get wrestler name safely
+                if hasattr(wrestler, 'name'):
+                    name = wrestler.name
+                elif isinstance(wrestler, dict) and 'name' in wrestler:
+                    name = wrestler["name"]
+                else:
+                    name = "Unknown Wrestler"
                 
                 # Add colors based on which wrestler is speaking
                 color = "#66CCFF" if wrestler == w1 else "#FF9966"
@@ -218,8 +230,8 @@ class VersusPromoUI(QWidget):
         # Final scores
         scores = result["final_scores"]
         stats_html += "<h3>Final Scores</h3>"
-        stats_html += f"<p><b>{w1['name']}:</b> {scores['wrestler1_score']:.1f}</p>"
-        stats_html += f"<p><b>{w2['name']}:</b> {scores['wrestler2_score']:.1f}</p>"
+        stats_html += f"<p><b>{w1_name}:</b> {scores['wrestler1_score']:.1f}</p>"
+        stats_html += f"<p><b>{w2_name}:</b> {scores['wrestler2_score']:.1f}</p>"
         stats_html += f"<p><b>Overall Score:</b> {scores['overall_score']:.1f}</p>"
         stats_html += f"<p><b>Competition Bonus:</b> {scores['competition_bonus']}</p>"
         stats_html += f"<p><b>Quality Bonus:</b> {scores['quality_bonus']}</p>"
@@ -235,14 +247,14 @@ class VersusPromoUI(QWidget):
         w2_momentum = [b.get("momentum", 0) for b in w2_beats if b.get("momentum") is not None]
         
         # Add wrestler statistics
-        stats_html += f"<h3>{w1['name']} Statistics</h3>"
+        stats_html += f"<h3>{w1_name} Statistics</h3>"
         if w1_scores:
             stats_html += f"<p>Average Beat Score: {statistics.mean(w1_scores):.1f}</p>"
         if w1_momentum:
             stats_html += f"<p>Average Momentum: {statistics.mean(w1_momentum):.1f}</p>"
         stats_html += f"<p>Total Beats: {len(w1_beats)}</p>"
         
-        stats_html += f"<h3>{w2['name']} Statistics</h3>"
+        stats_html += f"<h3>{w2_name} Statistics</h3>"
         if w2_scores:
             stats_html += f"<p>Average Beat Score: {statistics.mean(w2_scores):.1f}</p>"
         if w2_momentum:
@@ -251,9 +263,9 @@ class VersusPromoUI(QWidget):
         
         # Add winner declaration
         if scores['wrestler1_score'] > scores['wrestler2_score']:
-            stats_html += f"<h3>Winner: {w1['name']}</h3>"
+            stats_html += f"<h3>Winner: {w1_name}</h3>"
         elif scores['wrestler2_score'] > scores['wrestler1_score']:
-            stats_html += f"<h3>Winner: {w2['name']}</h3>"
+            stats_html += f"<h3>Winner: {w2_name}</h3>"
         else:
             stats_html += "<h3>Result: Draw</h3>"
         

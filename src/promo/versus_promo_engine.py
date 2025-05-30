@@ -12,15 +12,21 @@ from src.promo.promo_lines import get_versus_promo_line
 
 def get_attribute(wrestler, attr_name, default=50):
     """Helper function to get attributes from wrestler object with fallback default."""
-    # Check direct attributes
-    if attr_name in wrestler:
-        return wrestler[attr_name]
+    # Check if wrestler is an object with attributes
+    if hasattr(wrestler, attr_name):
+        return getattr(wrestler, attr_name)
         
-    # Check in attributes dict
-    if "attributes" in wrestler:
-        attrs = wrestler["attributes"]
-        if isinstance(attrs, dict) and attr_name in attrs:
-            return attrs[attr_name]
+    # Check if wrestler is a dictionary
+    if isinstance(wrestler, dict):
+        # Check direct attributes
+        if attr_name in wrestler:
+            return wrestler[attr_name]
+            
+        # Check in attributes dict
+        if "attributes" in wrestler:
+            attrs = wrestler["attributes"]
+            if isinstance(attrs, dict) and attr_name in attrs:
+                return attrs[attr_name]
     
     return default
 
@@ -123,7 +129,11 @@ class VersusPromoEngine:
     
     def _add_intro(self):
         """Add an introductory beat to set the scene."""
-        intro_text = f"{self.wrestler1['name']} and {self.wrestler2['name']} face off in the ring, microphones in hand."
+        # Get names safely
+        w1_name = self.wrestler1.name if hasattr(self.wrestler1, 'name') else self.wrestler1['name'] if isinstance(self.wrestler1, dict) else str(self.wrestler1)
+        w2_name = self.wrestler2.name if hasattr(self.wrestler2, 'name') else self.wrestler2['name'] if isinstance(self.wrestler2, dict) else str(self.wrestler2)
+        
+        intro_text = f"{w1_name} and {w2_name} face off in the ring, microphones in hand."
         
         # Format as a beat
         intro_beat = {
@@ -139,20 +149,24 @@ class VersusPromoEngine:
     
     def _add_summary(self):
         """Add a summary beat to conclude the promo battle."""
+        # Get names safely
+        w1_name = self.wrestler1.name if hasattr(self.wrestler1, 'name') else self.wrestler1['name'] if isinstance(self.wrestler1, dict) else str(self.wrestler1)
+        w2_name = self.wrestler2.name if hasattr(self.wrestler2, 'name') else self.wrestler2['name'] if isinstance(self.wrestler2, dict) else str(self.wrestler2)
+        
         # Determine who had better overall scores
         w1_avg = statistics.mean(self.w1_scores) if self.w1_scores else 0
         w2_avg = statistics.mean(self.w2_scores) if self.w2_scores else 0
         
         if w1_avg > w2_avg + 10:
-            summary_text = f"{self.wrestler1['name']} clearly dominated this verbal exchange, leaving {self.wrestler2['name']} struggling to respond."
+            summary_text = f"{w1_name} clearly dominated this verbal exchange, leaving {w2_name} struggling to respond."
         elif w2_avg > w1_avg + 10:
-            summary_text = f"{self.wrestler2['name']} clearly dominated this verbal exchange, leaving {self.wrestler1['name']} struggling to respond."
+            summary_text = f"{w2_name} clearly dominated this verbal exchange, leaving {w1_name} struggling to respond."
         elif w1_avg > w2_avg + 5:
-            summary_text = f"{self.wrestler1['name']} got the better of {self.wrestler2['name']} in this war of words."
+            summary_text = f"{w1_name} got the better of {w2_name} in this war of words."
         elif w2_avg > w1_avg + 5:
-            summary_text = f"{self.wrestler2['name']} got the better of {self.wrestler1['name']} in this war of words."
+            summary_text = f"{w2_name} got the better of {w1_name} in this war of words."
         else:
-            summary_text = f"The verbal exchange between {self.wrestler1['name']} and {self.wrestler2['name']} was evenly matched."
+            summary_text = f"The verbal exchange between {w1_name} and {w2_name} was evenly matched."
         
         # Format as a beat
         summary_beat = {
