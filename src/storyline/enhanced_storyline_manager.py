@@ -9,7 +9,7 @@ from src.storyline.storyline_manager import StorylineManager
 class EnhancedStorylineManager(StorylineManager):
     def __init__(self):
         super().__init__()
-        self.rivalry_db_path = "data/rivalries.db"
+        self.rivalry_db_path = "rivalries.db"
         self._init_rivalry_db()
         
     def _init_rivalry_db(self):

@@ -9,7 +9,7 @@ import random
 
 class StorylineManager:
     def __init__(self):
-        self.db_path = "data/storylines.db"
+        self.db_path = "storylines.db"
         self._init_db()
 
     def _init_db(self):
